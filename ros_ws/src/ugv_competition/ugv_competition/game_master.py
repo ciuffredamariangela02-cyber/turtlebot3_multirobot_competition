@@ -16,7 +16,7 @@
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile
+from rclpy.qos import QoSProfile, DurabilityPolicy
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
 from std_msgs.msg import String
 import random
@@ -33,14 +33,16 @@ ARENA_Y_MIN = -2.0
 ARENA_Y_MAX = 2.0
 PUBLISH_RATE = 1.0  # Hz
 MIN_GOAL_DISTANCE = GOAL_RADIUS * 2  # minimum distance between goals
- 
- 
+
 class GameMaster(Node):
  
     def __init__(self):
         super().__init__('game_master')
  
         qos = QoSProfile(depth=10)
+
+        map_qos = QoSProfile(depth=1)
+        map_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
  
         # Publisher
         self.goals_pub = self.create_publisher(PoseArray, '/game/goals', qos)
@@ -49,22 +51,22 @@ class GameMaster(Node):
         # Subscriber robot position
         self.create_subscription(
             PoseWithCovarianceStamped,
-            '/robot1/amcl_pose',
+            '/amcl_pose',
             self.robot1_pose_callback,
             qos)
  
-        self.create_subscription(
-            PoseWithCovarianceStamped,
-            '/robot2/amcl_pose',
-            self.robot2_pose_callback,
-            qos)
+        #self.create_subscription(
+        #    PoseWithCovarianceStamped,
+        #    '/robot2/amcl_pose',
+         #   self.robot2_pose_callback,
+        #    qos)
 
         # Subscriber Nav2 map
         self.create_subscription(
             OccupancyGrid,
             '/map',
             self.map_callback,
-            qos)
+            map_qos)
         
         # Play state
         self.robot1_pose = None
@@ -83,6 +85,7 @@ class GameMaster(Node):
 
     def map_callback(self, msg):
         """Receive Nav2 map and generate goals on first map reception."""
+        self.get_logger().info(f'Map callback called! Map is None: {self.map is None}')
         if self.map is None:
             self.map = msg
             self.get_logger().info('Map received, generating goals...')

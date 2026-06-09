@@ -15,6 +15,8 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (os.path.join('share', package_name, 'launch'), glob('launch/*')),
         (os.path.join('share', package_name, 'urdf_ws'), glob('urdf_ws/*')),
+        (os.path.join('share', package_name, 'config'), glob('config/*')),
+        (os.path.join('share', package_name, 'maps'), glob('maps/*')),
 
         
     ],

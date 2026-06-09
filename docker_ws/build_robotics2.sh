@@ -7,7 +7,7 @@ echo "Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
  
 docker build \
   -t "${IMAGE_NAME}:${IMAGE_TAG}" \
-  -f "$(dirname "$0")/Dockerfile.mac" \
+  -f "$(dirname "$0")/Dockerfile.robotics2" \
   "$(dirname "$0")"
  
 if [ $? -eq 0 ]; then
