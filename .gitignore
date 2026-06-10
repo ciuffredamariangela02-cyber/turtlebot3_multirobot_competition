@@ -1,4 +1,6 @@
-build/
-install/
-log/
-
+ros_ws/build/
+ros_ws/install/
+ros_ws/log/
+__pycache__/
+*.pyc
+*.pyo

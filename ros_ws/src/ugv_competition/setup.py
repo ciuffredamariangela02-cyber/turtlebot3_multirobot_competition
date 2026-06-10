@@ -13,11 +13,13 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'launch'), glob('launch/*')),
-        (os.path.join('share', package_name, 'urdf_ws'), glob('urdf_ws/*')),
-        (os.path.join('share', package_name, 'config'), glob('config/*')),
-        (os.path.join('share', package_name, 'maps'), glob('maps/*')),
-
+        (os.path.join('share', package_name, 'launch'), glob('launch/*')),  # Launch files
+        (os.path.join('share', package_name, 'urdf_ws'), glob('urdf_ws/*')), # URDF files for Gazebo
+        (os.path.join('share', package_name, 'config'), glob('config/*')), # Config files (e.g., Nav2 params)
+        (os.path.join('share', package_name, 'maps'), glob('maps/*')), # Map files
+        (os.path.join('share', package_name, 'worlds'), glob('worlds/*')), # Gazebo world files
+        (os.path.join('share', package_name, 'rviz'), glob('rviz/*')), # rviz config
+    
         
     ],
     install_requires=['setuptools'],
@@ -32,6 +34,7 @@ setup(
             'game_master = ugv_competition.game_master:main',
             'goal_function = ugv_competition.goal_function:main',
             'robot_controller = ugv_competition.robot_controller:main',
+            'tf_relay = ugv_competition.tf_relay:main',
         ],
     },
 )

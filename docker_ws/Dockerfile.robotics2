@@ -22,7 +22,7 @@ RUN apt-get update -y && apt-get install -y ros-jazzy-slam-toolbox ros-jazzy-rvi
  
 # rosdep
 RUN rosdep init || true && rosdep update
- 
+
 # Workspace
 RUN mkdir -p /ros_ws/src
 WORKDIR /ros_ws

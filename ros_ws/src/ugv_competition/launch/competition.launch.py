@@ -1,8 +1,7 @@
 # competition.launch.py
 # Launches the full competition:
 # - Gazebo with the competition world
-# - Nav2 localization (AMCL + map_server)
-# - Nav2 navigation (planner, controller, etc.)
+# - Nav2 for each robot (AMCL + navigation)
 # - Game Master node
 # - Goal Function node for each robot
 
@@ -12,7 +11,7 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, Grou
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.actions import TimerAction, ExecuteProcess
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node
+from launch_ros.actions import Node, PushRosNamespace
 from ament_index_python.packages import get_package_share_directory
 
 
@@ -38,24 +37,67 @@ def generate_launch_description():
         )
     )
 
-    # --- Localization: AMCL + map_server (t=0s) ---
-    localization = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_nav2, 'launch', 'localization_launch.py')
-        ),
-        launch_arguments={
-            'map': map_file,
-            'use_sim_time': 'true',
-            'params_file': os.path.join(pkg_ugv, 'config', 'nav2_params.yaml'),
-        }.items()
+    # --- TF Relay (t=0s) ---
+    tf_relay = Node(
+        package='ugv_competition',
+        executable='tf_relay',
+        name='tf_relay',
+        output='screen',
+        parameters=[{
+            'robot_namespaces': ['robot1', 'robot2'],
+            'use_sim_time': True
+        }]
     )
 
-    # --- Initial pose (t=20s) ---
-    initial_pose_cmd = TimerAction(
-        period=20.0,
+    # Rviz (t=5s) - Delayed to ensure Gazebo and TF relay are up, with the desired configuration
+    rviz_cmd = TimerAction(
+        period=5.0,
+        actions=[Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d', os.path.join(pkg_ugv, 'rviz', 'competition.rviz')],
+            output='screen'
+        )]
+    )
+
+    nav2_robot1 = TimerAction(
+        period=10.0,
+        actions=[IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_ugv, 'launch', 'navigation_robot.launch.py')
+            ),
+            launch_arguments={
+                'namespace': 'robot1',
+                'map': map_file,
+                'use_sim_time': 'true',
+                'params_file': os.path.join(pkg_ugv, 'config', 'nav2_robot1.yaml'),
+            }.items()
+        )]
+    )
+
+    nav2_robot2 = TimerAction(
+        period=10.0,
+        actions=[IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_ugv, 'launch', 'navigation_robot.launch.py')
+            ),
+            launch_arguments={
+                'namespace': 'robot2',
+                'map': map_file,
+                'use_sim_time': 'true',
+                'params_file': os.path.join(pkg_ugv, 'config', 'nav2_robot2.yaml'),
+            }.items()
+        )]
+    )
+                
+
+    # --- Initial pose Robot 1  ---
+    initial_pose_robot1_cmd = TimerAction(
+        period=25.0,
         actions=[
             ExecuteProcess(
-                cmd=['ros2', 'topic', 'pub', '--times', '5', '/initialpose',
+                cmd=['ros2', 'topic', 'pub', '--times', '10', '/robot1/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
                     '{"header": {"frame_id": "map"}, "pose": {"pose": {"position": {"x": 2.5, "y": -1.5, "z": 0.0}, "orientation": {"w": 1.0}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}'],
                 output='screen'
@@ -63,25 +105,22 @@ def generate_launch_description():
         ]
     )
 
-    # --- Navigation: planner, controller, bt_navigator (t=30s) ---
-    navigation_cmd = TimerAction(
-        period=30.0,
+    # --- Initial pose Robot 2 ---
+    initial_pose_robot2_cmd = TimerAction(
+        period=25.0,
         actions=[
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    os.path.join(pkg_nav2, 'launch', 'navigation_launch.py')
-                ),
-                launch_arguments={
-                    'use_sim_time': 'true',
-                    'params_file': os.path.join(pkg_ugv, 'config', 'nav2_params.yaml'),
-                }.items()
+            ExecuteProcess(
+                cmd=['ros2', 'topic', 'pub', '--times', '10', '/robot2/initialpose',
+                    'geometry_msgs/msg/PoseWithCovarianceStamped',
+                    '{"header": {"frame_id": "map"}, "pose": {"pose": {"position": {"x": 2.5, "y": -2.5, "z": 0.0}, "orientation": {"w": 1.0}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}'],
+                output='screen'
             )
         ]
     )
 
-    # --- Game Master (t=45s) ---
+    # --- Game Master ---
     game_master_cmd = TimerAction(
-        period=45.0,
+        period=40.0,
         actions=[Node(
             package='ugv_competition',
             executable='game_master',
@@ -91,9 +130,9 @@ def generate_launch_description():
         )]
     )
 
-    # --- Goal Function Robot 1 (t=47s) ---
+    # --- Goal Function Robot 1---
     goal_function_robot1_cmd = TimerAction(
-        period=47.0,
+        period=45.0,
         actions=[Node(
             package='ugv_competition',
             executable='goal_function',
@@ -101,34 +140,38 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'robot_name': 'robot1',
-                'use_namespace': False,
+                'use_namespace': True,
                 'use_sim_time': True
             }]
         )]
     )
 
-    # --- Goal Function Robot 2 (commented out for single robot test) ---
-    # goal_function_robot2_cmd = TimerAction(
-    #     period=47.0,
-    #     actions=[Node(
-    #         package='ugv_competition',
-    #         executable='goal_function',
-    #         name='goal_function_robot2',
-    #         output='screen',
-    #         parameters=[{
-    #             'robot_name': 'robot2',
-    #             'use_namespace': True,
-    #             'use_sim_time': True
-    #         }]
-    #     )]
-    # )
+    # --- Goal Function Robot 2  ---
+    goal_function_robot2_cmd = TimerAction(
+        period=45.0,
+        actions=[Node(
+            package='ugv_competition',
+            executable='goal_function',
+            name='goal_function_robot2',
+            output='screen',
+            parameters=[{
+                'robot_name': 'robot2',
+                'use_namespace': True,
+                'use_sim_time': True
+            }]
+        )]
+    )
 
     return LaunchDescription([
         map_arg,
         gazebo,
-        localization,
-        initial_pose_cmd,
-        navigation_cmd,
+        tf_relay,
+        rviz_cmd,
+        nav2_robot1,
+        nav2_robot2,
+        initial_pose_robot1_cmd,
+        initial_pose_robot2_cmd,
         game_master_cmd,
         goal_function_robot1_cmd,
+        goal_function_robot2_cmd,
     ])

@@ -21,7 +21,7 @@ import json
 # Strategy parameters
 ALPHA = 1.0   # weight for own distance (higher = prefer closer goals)
 BETA = 0.5    # weight for competitive advantage (higher = prefer blocking opponent)
-GOAL_REACHED_THRESHOLD = 0.3  # meters
+GOAL_REACHED_THRESHOLD = 0.2  # meters
 MAX_GOAL_DISTANCE = 1.0  # max distance to consider a goal reachable
 MAX_DISTANCE_ARENA = 10.0  # max distance in the arena for goal selection
 
@@ -38,7 +38,7 @@ class GoalFunction(Node):
         self.opponent_name = 'robot2' if self.robot_name == 'robot1' else 'robot1'
 
         # Use namespace if robot_name is set
-        self.use_namespace = self.declare_parameter('use_namespace', False).value
+        self.use_namespace = self.declare_parameter('use_namespace', True).value
 
         qos = QoSProfile(depth=10)
 
@@ -66,11 +66,12 @@ class GoalFunction(Node):
             self.own_pose_callback,
             pose_qos)
 
-        # self.create_subscription(
-        #     PoseWithCovarianceStamped,
-        #     opponent_pose_topic,
-        #     self.opponent_pose_callback,
-        #     qos)
+        # Subscribe to opponent pose
+        self.create_subscription(
+            PoseWithCovarianceStamped,
+            opponent_pose_topic,
+            self.opponent_pose_callback,
+            pose_qos)
 
         self.create_subscription(
             String,
@@ -143,11 +144,9 @@ class GoalFunction(Node):
 
         return -ALPHA * own_dist + BETA * competitive_advantage
 
-def select_best_goal(self):
-        new_radius = MAX_GOAL_DISTANCE
+    def select_best_goal(self):
         """Select the best goal using the greedy scoring function."""
-
-
+        new_radius = MAX_GOAL_DISTANCE
 
         if not self.goals or self.own_pose is None:
             return None
@@ -155,7 +154,7 @@ def select_best_goal(self):
         reachable_goals = []
         
         #If NO goals are within 1 meter, add 1 meter to the radius
-        while not reachable_goals and new_radius <= MAX_ARENA_DISTANCE:
+        while not reachable_goals and new_radius <= MAX_DISTANCE_ARENA:
             #check goals with current distance
             for g in self.goals:
                 dist = self.euclidean_distance(self.own_pose, g)
@@ -165,7 +164,10 @@ def select_best_goal(self):
             # If no goals are within radius, expand by 1 meter
             if not reachable_goals:
                 new_radius += 1.0
-    
+        
+        if not reachable_goals:
+            return None
+
         best_goal = max(reachable_goals, key=lambda g: self.score_goal(g))
         return best_goal
         
@@ -175,6 +177,12 @@ def select_best_goal(self):
             self.get_logger().warn('Nav2 action server not available')
             return
 
+        # Added, due to the fact that the goal function must be computed continuosly,
+        # so that the robot can change goal, we need to cancel the current goal before sending a new one, 
+        # otherwise Nav2 will reject the new goal
+        if self.navigating:
+            self.nav2_client.cancel_all_goals_async()
+
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = PoseStamped()
         goal_msg.pose.header.frame_id = 'map'
@@ -183,12 +191,30 @@ def select_best_goal(self):
         goal_msg.pose.pose.position.y = goal['y']
         goal_msg.pose.pose.orientation.w = 1.0
 
-        self.nav2_client.send_goal_async(goal_msg)
+        send_goal_future = self.nav2_client.send_goal_async(goal_msg)
+        send_goal_future.add_done_callback(self.goal_response_callback)
         self.current_goal = goal
         self.navigating = True
         self.get_logger().info(
             f'{self.robot_name} navigating to goal ({goal["x"]:.2f}, {goal["y"]:.2f})')
 
+    # Added these two callbacks for goal response to handle acceptance/rejection
+    def goal_result_callback(self, future):
+        self.current_goal = None   # reset current goal when result is received (either success or failure), to allow selecting a new goal
+        self.navigating = False
+    
+    def goal_response_callback(self, future):
+        """Estabilish if the goal was accepted or rejected by Nav2, 
+        if accepted, reset the current goal to None in order to find a new one (done by goal_result_callback)"""
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            self.get_logger().warn('Goal rejected!')
+            self.current_goal = None
+            self.navigating = False
+            return
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self.goal_result_callback)
+        
     def is_goal_reached(self):
         """Check if the current goal has been reached."""
         if self.current_goal is None or self.own_pose is None:

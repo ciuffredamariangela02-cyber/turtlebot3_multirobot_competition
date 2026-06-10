@@ -1,14 +1,18 @@
-# navigation_robot_launch.py
+# navigation_robot.launch.py
 # This launch file starts Nav2 for a single robot with the correct namespace.
 # It uses RewrittenYaml to rewrite the generic nav2_params.yaml adding the
 # robot namespace as root key, so all Nav2 nodes correctly read their parameters.
 # This approach allows using a single yaml file for all robots, making the
 # system scalable to any number of robots.
+#
+# The TF frames in nav2_params.yaml are specified without namespace (e.g. odom, base_link).
+# Nav2 nodes running under PushRosNamespace resolve these frames relative to the namespace,
+# so odom becomes robot1/odom and base_link becomes robot1/base_link automatically.
 
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction, SetEnvironmentVariable
+from launch.actions import DeclareLaunchArgument, GroupAction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node, PushRosNamespace
 from launch_ros.descriptions import ParameterFile
@@ -23,34 +27,31 @@ def generate_launch_description():
     params_file = LaunchConfiguration('params_file')
     map_file = LaunchConfiguration('map')
 
-    lifecycle_nodes = [
-        'controller_server',
-        'smoother_server',
-        'planner_server',
-        'behavior_server',
-        'velocity_smoother',
-        'collision_monitor',
-        'bt_navigator',
-        'waypoint_follower',
-    ]
-
     lifecycle_nodes_localization = [
         'map_server',
         'amcl',
     ]
 
-    remappings = [('/tf', 'tf'), ('/tf_static', 'tf_static')]
+    lifecycle_nodes_navigation = [
+        'controller_server',
+        'smoother_server',
+        'planner_server',
+        'behavior_server',
+        'bt_navigator',
+        'waypoint_follower',
+        'velocity_smoother',
+        'collision_monitor',
+    ]
 
-    # Rewrite the yaml adding the namespace as root key
-    # This ensures all Nav2 nodes read parameters under the correct namespace
-    configured_params = ParameterFile(
-        RewrittenYaml(
-            source_file=params_file,
-            root_key=namespace,
-            param_rewrites={'autostart': autostart},
-            convert_types=True,
-        ),
-        allow_substs=True,
+    # TF remappings: Nav2 nodes publish TF on relative 'tf' topic.
+    # With PushRosNamespace this becomes /robot1/tf but we need global /tf.
+    remappings = [('tf', '/tf'), ('tf_static', '/tf_static')]
+
+    configured_params = RewrittenYaml(
+        source_file=params_file,
+        root_key=namespace,
+        param_rewrites={},
+        convert_types=True
     )
 
     declare_namespace_cmd = DeclareLaunchArgument(
@@ -87,7 +88,7 @@ def generate_launch_description():
             executable='map_server',
             name='map_server',
             output='screen',
-            parameters=[configured_params, {'yaml_filename': map_file}],
+            parameters=[configured_params, {'yaml_filename': map_file}, {'use_sim_time': True}],
             remappings=remappings),
 
         Node(
@@ -95,22 +96,31 @@ def generate_launch_description():
             executable='amcl',
             name='amcl',
             output='screen',
-            parameters=[configured_params],
+            parameters=[
+                configured_params,
+                {'scan_topic': 'scan'},
+                {'transform_tolerance': 5.0},
+                {'use_sim_time': True}, 
+                {'base_frame_id': [namespace, '/base_footprint']},
+                {'odom_frame_id': [namespace, '/odom']},           
+                {'global_frame_id': 'map'},  
+            ],
             remappings=remappings),
 
         Node(
             package='nav2_controller',
             executable='controller_server',
+            name='controller_server',
             output='screen',
-            parameters=[configured_params],
-            remappings=remappings),
+            parameters=[configured_params, {'use_sim_time': True}],
+            remappings=remappings + [('scan', [namespace, '/scan'])]),
 
         Node(
             package='nav2_smoother',
             executable='smoother_server',
             name='smoother_server',
             output='screen',
-            parameters=[configured_params],
+            parameters=[configured_params, {'use_sim_time': True}],
             remappings=remappings),
 
         Node(
@@ -118,15 +128,15 @@ def generate_launch_description():
             executable='planner_server',
             name='planner_server',
             output='screen',
-            parameters=[configured_params],
-            remappings=remappings),
+            parameters=[configured_params, {'use_sim_time': True}],
+            remappings=remappings + [('scan', [namespace, '/scan'])]),
 
         Node(
             package='nav2_behaviors',
             executable='behavior_server',
             name='behavior_server',
             output='screen',
-            parameters=[configured_params],
+            parameters=[configured_params, {'use_sim_time': True}],
             remappings=remappings),
 
         Node(
@@ -134,7 +144,7 @@ def generate_launch_description():
             executable='bt_navigator',
             name='bt_navigator',
             output='screen',
-            parameters=[configured_params],
+            parameters=[configured_params, {'use_sim_time': True}],
             remappings=remappings),
 
         Node(
@@ -142,7 +152,7 @@ def generate_launch_description():
             executable='waypoint_follower',
             name='waypoint_follower',
             output='screen',
-            parameters=[configured_params],
+            parameters=[configured_params, {'use_sim_time': True}],
             remappings=remappings),
 
         Node(
@@ -150,7 +160,7 @@ def generate_launch_description():
             executable='velocity_smoother',
             name='velocity_smoother',
             output='screen',
-            parameters=[configured_params],
+            parameters=[configured_params, {'use_sim_time': True}],
             remappings=remappings),
 
         Node(
@@ -158,28 +168,36 @@ def generate_launch_description():
             executable='collision_monitor',
             name='collision_monitor',
             output='screen',
-            parameters=[configured_params],
-            remappings=remappings),
+            parameters=[configured_params, {'use_sim_time': True}],
+            remappings=remappings + [('scan', [namespace, '/scan'])]),
 
         Node(
             package='nav2_lifecycle_manager',
             executable='lifecycle_manager',
             name='lifecycle_manager_localization',
             output='screen',
-            parameters=[{'autostart': autostart,
-                         'node_names': lifecycle_nodes_localization}]),
+            parameters=[{
+                'autostart': autostart,
+                'node_names': lifecycle_nodes_localization,  
+                'use_sim_time': use_sim_time,
+                'bond_timeout': 0.0,
+            }]),
 
         Node(
             package='nav2_lifecycle_manager',
             executable='lifecycle_manager',
             name='lifecycle_manager_navigation',
             output='screen',
-            parameters=[{'autostart': autostart,
-                         'node_names': lifecycle_nodes}]),
+            parameters=[{
+                'autostart': autostart,
+                'node_names': lifecycle_nodes_navigation,    
+                'use_sim_time': use_sim_time,
+                'bond_timeout': 0.0,
+                'attempt_respawn_reconnection': True, # to retry connecting to the lifecycle manager if it is not available
+            }]),
     ])
 
     ld = LaunchDescription()
-
     ld.add_action(declare_namespace_cmd)
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_autostart_cmd)
