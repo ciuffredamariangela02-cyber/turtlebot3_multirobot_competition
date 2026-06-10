@@ -1,13 +1,12 @@
 # navigation_robot.launch.py
 # This launch file starts Nav2 for a single robot with the correct namespace.
-# It uses RewrittenYaml to rewrite the generic nav2_params.yaml adding the
+# It uses RewrittenYaml to rewrite the robot-specific nav2_robotX.yaml adding the
 # robot namespace as root key, so all Nav2 nodes correctly read their parameters.
-# This approach allows using a single yaml file for all robots, making the
-# system scalable to any number of robots.
+# Two separate YAML files are used (nav2_robot1.yaml and nav2_robot2.yaml) to
+# explicitly specify namespace-prefixed frame IDs and topic names for each robot.
 #
-# The TF frames in nav2_params.yaml are specified without namespace (e.g. odom, base_link).
-# Nav2 nodes running under PushRosNamespace resolve these frames relative to the namespace,
-# so odom becomes robot1/odom and base_link becomes robot1/base_link automatically.
+# TF remappings ensure Nav2 publishes on the global /tf topic instead of the
+# namespaced /robot1/tf, which is handled by the tf_relay node.
 
 import os
 from ament_index_python.packages import get_package_share_directory
