@@ -1,1 +1,1 @@
-docker build --rm -t ros:proj -f Dockerfile .
+docker build --rm -t ros:proj -f Dockerfile.project .

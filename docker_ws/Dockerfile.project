@@ -1,0 +1,21 @@
+FROM ros:jazzy
+RUN apt update -y && apt install ros-jazzy-turtlesim* -y
+RUN apt update -y && apt install -y ros-jazzy-rqt-graph
+RUN apt update -y && apt install -y wget
+RUN apt update -y && apt install -y ros-jazzy-urdf-tutorial
+RUN apt update -y && apt install -y liburdfdom-tools
+RUN apt update -y && apt install -y python3-colcon-common-extensions
+RUN apt update -y && apt install -y ros-jazzy-test-msgs
+# install gazebo and ROS bridge (CTRL)
+RUN apt update -y && apt install -y ros-jazzy-ros-gz ros-jazzy-ros-gz-bridge ros-jazzy-gz-sim-vendor
+# install navigation
+RUN apt update -y && apt install -y ros-jazzy-navigation2 \
+    ros-jazzy-nav2-bringup ros-jazzy-cartographer \
+    ros-jazzy-cartographer-ros
+
+# TurtleBot3
+RUN apt-get update -y && apt-get install -y ros-jazzy-turtlebot3 ros-jazzy-turtlebot3-simulations ros-jazzy-turtlebot3-gazebo
+
+# SLAM + RViz2
+RUN apt-get update -y && apt-get install -y ros-jazzy-slam-toolbox ros-jazzy-rviz2
+ 
