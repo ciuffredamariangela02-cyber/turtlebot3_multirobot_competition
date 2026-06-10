@@ -6,7 +6,6 @@ IMAGE_TAG="jazzy"
 echo "Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
  
 docker build \
-  --no-cache \
   -t "${IMAGE_NAME}:${IMAGE_TAG}" \
   -f "$(dirname "$0")/Dockerfile.robotics2" \
   "$(dirname "$0")"
