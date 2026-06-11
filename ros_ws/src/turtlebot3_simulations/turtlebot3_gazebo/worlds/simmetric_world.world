@@ -1,0 +1,108 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="custom_world">
+
+    <physics type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>150</iters>
+          <precon_iters>0</precon_iters>
+          <sor>1.400000</sor>
+          <use_dynamic_moi_rescaling>1</use_dynamic_moi_rescaling>
+        </solver>
+        <constraints>
+          <cfm>0.00001</cfm>
+          <erp>0.2</erp>
+          <contact_max_correcting_vel>2000.000000</contact_max_correcting_vel>
+          <contact_surface_layer>0.01000</contact_surface_layer>
+        </constraints>
+      </ode>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"></plugin>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"></plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"></plugin>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"></plugin>
+
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Ground Plane</uri>
+    </include>
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sun</uri>
+    </include>
+
+    <!-- ── Boundary walls: x ∈ [-3,3]  y ∈ [-4,4] ── -->
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0 -4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>6.1 0.05 1.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>6.1 0.05 1.0</size></box></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0 4 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>6.1 0.05 1.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>6.1 0.05 1.0</size></box></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-3 0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.05 8.1 1.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.05 8.1 1.0</size></box></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_east">
+      <static>true</static>
+      <pose>3 0 0.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.05 8.1 1.0</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.05 8.1 1.0</size></box></geometry><material><ambient>0.2 0.2 0.2 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <!-- ════════════════════════════════════════════════
+         TOP ZONE  (y > 0)  —  Robot2 starts at (0, 3.5)
+         Grid 3 cols x 2 rows
+         Cols: x = -2.0, 0.0, 2.0   (spacing 2.0m)
+         Rows: y = 1.2, 2.8          (spacing 1.6m)
+         Cylinder radius = 0.5m → gap between cylinders = 1.0m
+    ════════════════════════════════════════════════ -->
+
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_t_00</name><pose>-2.0 1.2 0.5 0 0 0</pose></include>
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_t_10</name><pose> 0.0 1.2 0.5 0 0 0</pose></include>
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_t_20</name><pose> 2.0 1.2 0.5 0 0 0</pose></include>
+
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_t_01</name><pose>-2.0 2.8 0.5 0 0 0</pose></include>
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_t_11</name><pose> 0.0 2.8 0.5 0 0 0</pose></include>
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_t_21</name><pose> 2.0 2.8 0.5 0 0 0</pose></include>
+
+    <!-- ════════════════════════════════════════════════
+         BOTTOM ZONE  (y < 0)  —  Robot1 starts at (0, -3.5)
+         Mirror of top zone: y → -y
+    ════════════════════════════════════════════════ -->
+
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_b_00</name><pose>-2.0 -1.2 0.5 0 0 0</pose></include>
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_b_10</name><pose> 0.0 -1.2 0.5 0 0 0</pose></include>
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_b_20</name><pose> 2.0 -1.2 0.5 0 0 0</pose></include>
+
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_b_01</name><pose>-2.0 -2.8 0.5 0 0 0</pose></include>
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_b_11</name><pose> 0.0 -2.8 0.5 0 0 0</pose></include>
+    <include><uri>model://cylinder_obstacle</uri><name>cyl_b_21</name><pose> 2.0 -2.8 0.5 0 0 0</pose></include>
+
+  </world>
+</sdf>
