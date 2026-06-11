@@ -49,9 +49,13 @@ def generate_launch_description():
         }]
     )
 
-    # Rviz (t=5s) - Delayed to ensure Gazebo and TF relay are up, with the desired configuration
+    
+   
+
+    
+    # Rviz (t=7s) - Delayed to ensure Gazebo and TF relay are up, with the desired configuration
     rviz_cmd = TimerAction(
-        period=5.0,
+        period=7.0,
         actions=[Node(
             package='rviz2',
             executable='rviz2',
@@ -162,6 +166,21 @@ def generate_launch_description():
         )]
     )
 
+
+    # Robot Label 
+
+    robot_label_cmd = TimerAction(
+        period=41.0,
+        actions=[Node(
+            package='ugv_competition',
+            executable='robot_label',
+            name='robot_label',
+            output='screen',
+            parameters=[{'use_sim_time':True}]
+        )]
+    )
+
+
     return LaunchDescription([
         map_arg,
         gazebo,
@@ -174,4 +193,5 @@ def generate_launch_description():
         game_master_cmd,
         goal_function_robot1_cmd,
         goal_function_robot2_cmd,
+        robot_label_cmd
     ])
