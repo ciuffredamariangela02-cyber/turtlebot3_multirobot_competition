@@ -35,6 +35,7 @@ setup(
             'goal_function = ugv_competition.goal_function:main',
             'robot_controller = ugv_competition.robot_controller:main',
             'tf_relay = ugv_competition.tf_relay:main',
+            'robot_label = ugv_competition.robot_label:main',
         ],
     },
 )
