@@ -3,12 +3,16 @@
 # It is called twice from custom_world.launch.py to spawn robot1 and robot2.
 #
 # Key approach (adapted from arshadlab/tb3_multi_robot):
-# Instead of using bridge remapping or a tf_relay node, the SDF model file is patched
-# at runtime to inject the robot namespace directly into all Gazebo topic names.
-# This means Gazebo publishes directly on /robot1/tf, /robot1/scan, /robot1/odom etc.
-# with the correct frame IDs (robot1/odom, robot1/base_footprint).
-# The ros_gz_bridge then uses a namespaced bridge YAML to map these topics to ROS2.
+# The SDF model file is patched at runtime to inject the robot namespace directly 
+# into all Gazebo topic names. This means Gazebo publishes directly on /robot1/tf, 
+# /robot1/scan, /robot1/odom etc. with the correct frame IDs (robot1/odom, 
+# robot1/base_footprint).
+# The ros_gz_bridge uses a namespaced bridge YAML to map these topics to ROS2.
 # The robot_state_publisher uses frame_prefix to publish robot1/base_link etc.
+#
+# A tf_relay node (launched separately in competition.launch.py) subscribes to 
+# each robot's namespaced /tf topic and republishes on the global /tf, ensuring 
+# all transforms are available in a single TF tree for Nav2 and AMCL.
 #
 # Note: the /clock topic is bridged only once (by robot1) to avoid duplicate
 # publishers that cause clock instability and "jump back in time" errors.
@@ -45,6 +49,7 @@ def generate_launch_description():
         'params', model_folder + '_bridge.yaml'
     )
 
+    # Declare 4 arguments
     x_pose          = LaunchConfiguration('x_pose',          default='0.0')
     y_pose          = LaunchConfiguration('y_pose',          default='0.0')
     robot_name      = LaunchConfiguration('robot_name',      default=TURTLEBOT3_MODEL)
