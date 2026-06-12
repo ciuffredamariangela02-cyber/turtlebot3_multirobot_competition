@@ -22,7 +22,8 @@ import json
 ALPHA = 1.0   # weight for own distance (higher = prefer closer goals)
 BETA = 0.5    # weight for competitive advantage (higher = prefer blocking opponent)
 GOAL_REACHED_THRESHOLD = 0.3  # meters
-
+MAX_GOAL_DISTANCE = 1.0  # max distance to consider a goal reachable
+MAX_DISTANCE_ARENA = 10.0  # max distance in the arena for goal selection
 
 class GoalFunction(Node):
 
@@ -142,14 +143,32 @@ class GoalFunction(Node):
 
         return -ALPHA * own_dist + BETA * competitive_advantage
 
-    def select_best_goal(self):
+def select_best_goal(self):
+        new_radius = MAX_GOAL_DISTANCE
         """Select the best goal using the greedy scoring function."""
+
+
+
         if not self.goals or self.own_pose is None:
             return None
-
-        best_goal = max(self.goals, key=lambda g: self.score_goal(g))
+        
+        reachable_goals = []
+        
+        #If NO goals are within 1 meter, add 1 meter to the radius
+        while not reachable_goals and new_radius <= MAX_ARENA_DISTANCE:
+            #check goals with current distance
+            for g in self.goals:
+                dist = self.euclidean_distance(self.own_pose, g)
+                if dist <= new_radius:
+                    reachable_goals.append(g)
+            
+            # If no goals are within radius, expand by 1 meter
+            if not reachable_goals:
+                new_radius += 1.0
+    
+        best_goal = max(reachable_goals, key=lambda g: self.score_goal(g))
         return best_goal
-
+        
     def send_goal_to_nav2(self, goal):
         """Send the selected goal to Nav2."""
         if not self.nav2_client.wait_for_server(timeout_sec=1.0):

@@ -23,7 +23,8 @@ import random
 import math
 import json
 from nav_msgs.msg import OccupancyGrid
- 
+from custom_interfaces.msg import end_game
+
 # Game parameters
 NUM_GOALS = 10
 GOAL_RADIUS = 0.3
@@ -47,7 +48,7 @@ class GameMaster(Node):
         # Publisher
         self.goals_pub = self.create_publisher(PoseArray, '/game/goals', qos)
         self.score_pub = self.create_publisher(String, '/game/score', qos)
- 
+
         # Subscriber robot position
         self.create_subscription(
             PoseWithCovarianceStamped,
