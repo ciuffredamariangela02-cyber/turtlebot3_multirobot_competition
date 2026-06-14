@@ -31,9 +31,9 @@ class NavState(Enum):
     RECOVERING    = auto()  # recover from a blocking state
 
 # Strategy parameters
-ALPHA = 6.0   # weight for own distance (higher = prefer closer goals)
-BETA = 4.0    # weight for competitive advantage (higher = prefer avoid goal where opponent is nearer than him)
-GAMMA = 2.0 
+ALPHA = 0.0   # weight for own distance (higher = prefer closer goals)
+BETA = 0.0    # weight for competitive advantage (higher = prefer avoid goal where opponent is nearer than him)
+GAMMA = 1.0 
 GOAL_REACHED_THRESHOLD = 0.30  # meters
 MAX_GOAL_DISTANCE = 3.0  # max distance to consider a goal reachable
 MAX_DISTANCE_ARENA = 10.0  # max distance in the arena for goal selection
