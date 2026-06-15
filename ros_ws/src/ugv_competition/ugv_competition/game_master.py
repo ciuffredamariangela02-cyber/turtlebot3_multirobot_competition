@@ -22,19 +22,19 @@ from std_msgs.msg import String
 import random
 import math
 import json
-from nav_msgs.msg import OccupancyGrid
 from visualization_msgs.msg import Marker, MarkerArray
 from builtin_interfaces.msg import Duration
 
 # Game parameters
 NUM_GOALS = 10
-GOAL_RADIUS = 0.2
+GOAL_RADIUS = 0.3  # Generoso per la fluidità
 ARENA_X_MIN = -2.9
 ARENA_X_MAX = 2.9
 ARENA_Y_MIN = -3.9
 ARENA_Y_MAX = 3.9
 PUBLISH_RATE = 1.0  # Hz
 MIN_GOAL_DISTANCE = GOAL_RADIUS * 4  # minimum distance between goals
+OBSTACLE_MARGIN = 0.35  # Margine di sicurezza fisico dagli ostacoli
 
 class GameMaster(Node):
  
@@ -43,93 +43,64 @@ class GameMaster(Node):
  
         qos = QoSProfile(depth=10)
 
-        map_qos = QoSProfile(depth=1)
-        map_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
- 
         # Publisher
         self.goals_pub = self.create_publisher(PoseArray, '/game/goals', qos)
         self.score_pub = self.create_publisher(String, '/game/score', qos)
-
-        # Publisher for RViz visual markers
         self.marker_pub = self.create_publisher(MarkerArray, '/game/goal_markers', qos) 
 
         # Subscriber robot position
-        self.create_subscription(
-            PoseWithCovarianceStamped,
-            '/robot1/amcl_pose',
-            self.robot1_pose_callback,
-            qos)
-
-        self.create_subscription(
-            PoseWithCovarianceStamped,
-            '/robot2/amcl_pose',
-            self.robot2_pose_callback,
-            qos)
+        self.create_subscription(PoseWithCovarianceStamped, '/robot1/amcl_pose', self.robot1_pose_callback, qos)
+        self.create_subscription(PoseWithCovarianceStamped, '/robot2/amcl_pose', self.robot2_pose_callback, qos)
  
-        # Subscriber Nav2 map
-        self.create_subscription(
-            OccupancyGrid,
-            '/robot1/map', # the same map for robot1 and robot2
-            self.map_callback,
-            map_qos)
-        
         # Play state
         self.robot1_pose = None
         self.robot2_pose = None
         self.score = {'robot1': 0, 'robot2': 0}
         self.goals = []
-
         self.game_over = False
-        self.map = None  # Nav2 OccupancyGrid map
  
-        # Pubblication timer
-        self.create_timer(1.0 / PUBLISH_RATE, self.game_loop)
- 
-        self.get_logger().info('Game Master started!')
+        # GENERAZIONE IMMEDIATA: Non aspettiamo più nessuna mappa!
+        self.generate_goals()
         self.get_logger().info(f'Goals generated: {len(self.goals)}')
 
-    def map_callback(self, msg):
-        """Receive Nav2 map and generate goals on first map reception."""
-        self.get_logger().info(f'Map callback called! Map is None: {self.map is None}')
-        if self.map is None:
-            self.map = msg
-            self.get_logger().info('Map received, generating goals...')
-            self.generate_goals()
-            self.get_logger().info(f'Goals generated: {len(self.goals)}')
- 
-    def is_free(self, x, y):
-        """Check if a position is free using the Nav2 OccupancyGrid map.
-        
-        OccupancyGrid cells:
-        0   = free
-        100 = obstacle
-        -1  = unknown
-        """
-        if self.map is None:
-            return True  # if map not available yet, accept the goal
- 
-        # Convert world coordinates to grid cell indices
-        mx = int((x - self.map.info.origin.position.x) / self.map.info.resolution)
-        my = int((y - self.map.info.origin.position.y) / self.map.info.resolution)
- 
-        # Check bounds
-        if mx < 0 or my < 0 or mx >= self.map.info.width or my >= self.map.info.height:
-            return False
- 
-        # Check if cell is free (0 = free)
-        idx = my * self.map.info.width + mx
-        return self.map.data[idx] == 0
- 
+        # Pubblication timer
+        self.create_timer(1.0 / PUBLISH_RATE, self.game_loop)
+        self.get_logger().info('Game Master started!')
+
     def is_valid_goal(self, x, y):
-        """Check if a goal position is valid:
-        - Must be on a free cell (not obstacle)
-        - Must not be too close to existing goals
-        """
-        # Check if position is free on the map
-        if not self.is_free(x, y):
+        """Check if a goal position is valid using Absolute Mathematical Truth."""
+        margin = OBSTACLE_MARGIN
+
+        # 1. Limiti Esterni
+        if x < (-3.0 + margin) or x > (3.0 - margin) or y < (-4.0 + margin) or y > (4.0 - margin):
             return False
- 
-        # Check if the position is not too close to existing goals
+
+        # 2. Muro Divisorio Centrale (Pose: 1.0, -1.0 | Size: 4.0 x 0.05)
+        if (-1.0 - margin) <= x <= (3.0 + margin) and (-1.025 - margin) <= y <= (-0.975 + margin):
+            return False
+
+        # 3. Big Box Obstacle (Pose: -1.0, 1.5 | Size: 2.0 x 3.0)
+        if (-2.0 - margin) <= x <= (0.0 + margin) and (0.0 - margin) <= y <= (3.0 + margin):
+            return False
+
+        # 4. Small Box Obstacle (Pose: -1.0, -2.5 | Size: 2.0 x 1.0)
+        if (-2.0 - margin) <= x <= (0.0 + margin) and (-3.0 - margin) <= y <= (-2.0 + margin):
+            return False
+
+        # 5. Cilindri (Centri: [1.5, 2.5] e [1.5, 0.5])
+        cylinder_radius = 0.5 + margin 
+        if math.sqrt((x - 1.5)**2 + (y - 2.5)**2) <= cylinder_radius:
+            return False
+        if math.sqrt((x - 1.5)**2 + (y - 0.5)**2) <= cylinder_radius:
+            return False
+
+        # 6. Punti di Spawn (Niente goal gratuiti alla partenza)
+        if math.sqrt((x - 2.5)**2 + (y - (-1.5))**2) < 0.6:
+            return False
+        if math.sqrt((x - 2.5)**2 + (y - (-2.5))**2) < 0.6:
+            return False
+
+        # 7. Check if the position is not too close to existing goals
         for goal in self.goals:
             dx = x - goal['x']
             dy = y - goal['y']
@@ -139,10 +110,11 @@ class GameMaster(Node):
         return True
  
     def generate_goals(self):
-        """Generate NUM_GOALS random positions in the arena on free cells."""
+        """Generate NUM_GOALS random positions mathematically guaranteed to be free."""
         self.goals = []
         attempts = 0
-        while len(self.goals) < NUM_GOALS and attempts < 1000:
+        # Aumentato il numero di tentativi perché la matematica è velocissima
+        while len(self.goals) < NUM_GOALS and attempts < 2000:
             x = random.uniform(ARENA_X_MIN, ARENA_X_MAX)
             y = random.uniform(ARENA_Y_MIN, ARENA_Y_MAX)
             if self.is_valid_goal(x, y):
@@ -156,13 +128,11 @@ class GameMaster(Node):
         self.robot2_pose = msg.pose.pose
  
     def distance(self, pose, goal):
-        """Calculate Euclidean distance between pose and goal."""
         dx = pose.position.x - goal['x']
         dy = pose.position.y - goal['y']
         return math.sqrt(dx**2 + dy**2)
  
     def check_goals(self):
-        """Check if a robot has reached a goal."""
         for goal in self.goals:
             if not goal['active']:
                 continue
@@ -172,23 +142,19 @@ class GameMaster(Node):
                     goal['active'] = False
                     self.score['robot1'] += 1
                     goal['collected_by'] = 'robot1' 
-                    self.get_logger().info(
-                        f'Robot1 has reached goal {goal["id"]}! Score: {self.score}')
+                    self.get_logger().info(f'Robot1 has reached goal {goal["id"]}! Score: {self.score}')
  
             if self.robot2_pose and goal['active']:
                 if self.distance(self.robot2_pose, goal) < GOAL_RADIUS:
                     goal['active'] = False
                     self.score['robot2'] += 1
                     goal['collected_by'] = 'robot2' 
-                    self.get_logger().info(
-                        f'Robot2 has reached goal {goal["id"]}! Score: {self.score}')
+                    self.get_logger().info(f'Robot2 has reached goal {goal["id"]}! Score: {self.score}')
  
     def check_winner(self):
-        """Check if the game is over."""
         active_goals = [g for g in self.goals if g['active']]
-
         if len(self.goals) == 0:
-            return  # goals not generated yet
+            return
 
         if len(active_goals) == 0:
             self.game_over = True
@@ -202,12 +168,9 @@ class GameMaster(Node):
             self.get_logger().info(f'Final score: {self.score}')
  
     def publish_goals(self):
-        """Publish the list of active goals."""
         msg = PoseArray()
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = 'map'
-
-        #for visual 
         marker_array = MarkerArray()
  
         for goal in self.goals:
@@ -215,72 +178,48 @@ class GameMaster(Node):
             marker.header.frame_id = 'map'
             marker.header.stamp = msg.header.stamp
             marker.ns = 'shared_arena_goals'
-            
-            # Every marker needs a unique ID so RViz doesn't overwrite them
             marker.id = goal['id']
+            
+            pose = Pose()
+            pose.position.x = goal['x']
+            pose.position.y = goal['y']
+            pose.position.z = 0.0
+            
+            marker.type = Marker.CYLINDER
+            marker.action = Marker.ADD
+            marker.pose.position.x = goal['x']
+            marker.pose.position.y = goal['y']
+            marker.pose.position.z = 0.01
+            marker.pose.orientation.w = 1.0
+            marker.scale.x = 0.4
+            marker.scale.y = 0.4
+            marker.scale.z = 0.01
+
             if goal['active']:
-                # Provide the math coordinates
-                pose = Pose()
-                pose.position.x = goal['x']
-                pose.position.y = goal['y']
-                pose.position.z = 0.0
                 msg.poses.append(pose)
-
-                # Draw the visual circle
-                marker.type = Marker.CYLINDER
-                marker.action = Marker.ADD
-                marker.pose.position.x = goal['x']
-                marker.pose.position.y = goal['y']
-                marker.pose.position.z = 0.01  # Lift it 1cm so it doesn't glitch through the floor
-                marker.pose.orientation.w = 1.0
-                
-                # flat circle (40cm wide, 2cm tall)
-                marker.scale.x = 0.4
-                marker.scale.y = 0.4
-                marker.scale.z = 0.01 
-                
-                # bright Green
                 marker.color.a = 0.9  
-                marker.color.r = 0.0  # Turn off Red
-                marker.color.g = 1.0  # Turn on full Green
-                marker.color.b = 0.0  # Turn off Blue
-                
+                marker.color.r = 0.0  
+                marker.color.g = 1.0  
+                marker.color.b = 0.0  
             else:
-                marker.type = Marker.CYLINDER
-                marker.action = Marker.ADD    
-                marker.pose.position.x = goal['x']
-                marker.pose.position.y = goal['y']
-                marker.pose.position.z = 0.01
-                marker.pose.orientation.w = 1.0
-                marker.scale.x = 0.4
-                marker.scale.y = 0.4
-                marker.scale.z = 0.01
-
                 if goal['collected_by'] == 'robot1':
-                    #blue 
                     marker.color.a = 0.9 
                     marker.color.r = 0.0  
                     marker.color.g = 0.0  
                     marker.color.b = 1.0 
-
-                if goal['collected_by'] == 'robot2':
-                    #rosso
+                elif goal['collected_by'] == 'robot2':
                     marker.color.a = 0.9
                     marker.color.r = 1.0  
                     marker.color.g = 0.0  
                     marker.color.b = 0.9
 
             marker.lifetime = Duration(sec=2, nanosec=0)
-
-            # Add the marker to the array
             marker_array.markers.append(marker)
 
-        # Publish both arrays to the ROS 2 network
         self.goals_pub.publish(msg)
         self.marker_pub.publish(marker_array)
  
     def publish_score(self):
-        """Publish the current score."""
         score_data = {
             'robot1': self.score['robot1'],
             'robot2': self.score['robot2'],
@@ -291,18 +230,12 @@ class GameMaster(Node):
         self.score_pub.publish(msg)
  
     def game_loop(self):
-        """Main game loop."""
-        if self.game_over:
+        if self.game_over or len(self.goals) == 0:
             return
-        
-        if len(self.goals) == 0:
-            return  # waiting for map
-
         self.check_goals()
         self.check_winner()
         self.publish_goals()
         self.publish_score()
- 
  
 def main(args=None):
     rclpy.init(args=args)
@@ -310,7 +243,6 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
- 
  
 if __name__ == '__main__':
     main()
