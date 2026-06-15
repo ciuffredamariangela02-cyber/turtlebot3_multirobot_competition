@@ -92,9 +92,10 @@ class GoalFunction(Node):
         self.current_goal = None
         self.game_over = False
         self.navigating = False
+        self.goal_handle = None  # PROVA
 
         # Timer for goal selection
-        self.create_timer(1.0, self.select_and_send_goal)
+        self.create_timer(1, self.select_and_send_goal) 
 
         self.get_logger().info(f'{self.robot_name} Goal Function started!')
         self.get_logger().info(f'Own pose topic: {own_pose_topic}')
@@ -119,6 +120,44 @@ class GoalFunction(Node):
         dx = pose.position.x - goal['x']
         dy = pose.position.y - goal['y']
         return math.sqrt(dx**2 + dy**2)
+    
+    #METODO HARDCODED PROVA
+    def calculate_path_distance(self, pose, goal):
+        """
+        Calcola la distanza di navigazione REALE, aggirando il muro centrale.
+        Il muro si trova a y = -1.0 e blocca la zona da x = -1.0 a x = 3.0.
+        Il varco libero è a sinistra (x < -1.0).
+        """
+        robot_x = pose.position.x
+        robot_y = pose.position.y
+        goal_x = goal['x']
+        goal_y = goal['y']
+        
+        #Calcolo la distanza standard in linea d'aria
+        straight_dist = math.sqrt((robot_x - goal_x)**2 + (robot_y - goal_y)**2)
+
+        # Controllo se robot e goal sono su lati opposti del muro (y = -1.0)
+        opposite_sides = (robot_y > -1.0 and goal_y < -1.0) or (robot_y < -1.0 and goal_y > -1.0)
+        
+        if opposite_sides:
+            # Se ENTRAMBI sono già nella zona del varco (a sinistra di x = -1.0), la linea d'aria va bene
+            if robot_x < -1.0 and goal_x < -1.0:
+                return straight_dist
+            else:
+                # IL ROBOT DEVE AGGIRARE IL MURO
+                # distanza dal robot al centro del varco (x=-2.0, y=-1.0)
+                # e poi dal varco al goal.
+                gap_x = -2.0
+                gap_y = -1.0
+                dist_to_gap = math.sqrt((robot_x - gap_x)**2 + (robot_y - gap_y)**2)
+                dist_from_gap_to_goal = math.sqrt((goal_x - gap_x)**2 + (goal_y - gap_y)**2)
+                
+                # Aggiungere un "Malus" (es. +1.5 metri) per disincentivare i cambi di zona.
+                # Il robot preferirà pulire prima tutta la sua metà campo prima di passare all'altra!
+                return dist_to_gap + dist_from_gap_to_goal + 1.5 
+
+        # Se sono nello stesso lato del campo, la linea d'aria va benissimo
+        return straight_dist
 
     def score_goal(self, goal):
         """Calculate the score for a goal using the greedy strategy.
@@ -131,19 +170,83 @@ class GoalFunction(Node):
         - alpha: weight for my distance
         - beta: weight for competitive advantage
         """
+
+        #Calcola il punteggio del goal con logica competitiva egoista pura.
+    
         if self.own_pose is None:
-            return 0.0
+         return -9999.0
 
-        own_dist = self.euclidean_distance(self.own_pose, goal)
+        own_dist = self.calculate_path_distance(self.own_pose, goal)
 
-        if self.opponent_pose is not None:
-            opp_dist = self.euclidean_distance(self.opponent_pose, goal)
-            competitive_advantage = opp_dist - own_dist
-        else:
-            competitive_advantage = 0.0  # no info about opponent
+        # 1. Se non sappiamo dov'è l'avversario, valutiamo solo in base alla nostra distanza.
+        # Ritorno un numero negativo (più è vicino allo 0, meglio è).
+        if self.opponent_pose is None:
+            score = -own_dist
+            
+            # Isteresi (Bonus di Fedeltà)
+            if (self.current_goal is not None and 
+                abs(goal['x'] - self.current_goal['x']) < 1e-6 and 
+                abs(goal['y'] - self.current_goal['y']) < 1e-6):
+                score += 0.5
+            return score
 
-        return -ALPHA * own_dist + BETA * competitive_advantage
+        # 2. Conosciamo la posizione dell'avversario.
+        opp_dist = self.calculate_path_distance(self.opponent_pose, goal)
 
+        # -------------------------------------------------------------
+        # REGOLA COMPETITIVA (CUT-OFF): 
+        # Se l'avversario è più vicino a questo goal di un certo margine 
+        # (es. ha 40 cm di vantaggio), NON CI PROVARE NEMMENO. Perderesti.
+        # Assegniamo un punteggio bassissimo per scartarlo all'istante.
+        # -------------------------------------------------------------
+        margin_of_defeat = 0.4 # metri di vantaggio dell'avversario
+        
+        if opp_dist < (own_dist - margin_of_defeat):
+            return -9999.0  # Scartato.
+
+        # -------------------------------------------------------------
+        # SE SIAMO IN GARA (o se siamo in vantaggio noi):
+        # Il punteggio è primariamente dettato dalla nostra distanza.
+        # Ma aggiungiamo un piccolissimo "BETA" per infastidire l'avversario 
+        # SOLO nei casi in cui le distanze sono simili (contesa).
+        # -------------------------------------------------------------
+        score = -own_dist
+        
+        # Se siamo in contesa (distanze simili), diamo un piccolo bonus 
+        # per rubarglielo, ma NON COSÌ TANTO da farci viaggiare dall'altra
+        # parte della mappa ignorando i goal vicini e sicuri.
+        if abs(own_dist - opp_dist) < 1.0: 
+            competitive_bonus = (opp_dist - own_dist) * BETA  # Usa il tuo parametro BETA (0.5)
+            score += competitive_bonus
+
+        # Isteresi (Bonus di Fedeltà)
+        if (self.current_goal is not None and 
+            abs(goal['x'] - self.current_goal['x']) < 1e-6 and 
+            abs(goal['y'] - self.current_goal['y']) < 1e-6):
+            score += 0.5
+
+        return score
+
+    #    if self.own_pose is None:
+    #         return 0.0
+
+    #     own_dist = self.calculate_path_distance(self.own_pose, goal)
+
+    #     if self.opponent_pose is not None:
+    #         opp_dist = self.calculate_path_distance(self.opponent_pose, goal)
+    #         competitive_advantage = opp_dist - own_dist
+    #     else:
+    #         competitive_advantage = 0.0  # no info about opponent
+
+    #     score = -ALPHA * own_dist + BETA * competitive_advantage
+        
+    #     if (self.current_goal is not None 
+    #             and abs(goal['x'] - self.current_goal['x']) < 1e-6 
+    #             and abs(goal['y'] - self.current_goal['y']) < 1e-6):
+    #         score += 0.5
+
+    #     return score
+       
     def select_best_goal(self):
         """Select the best goal using the greedy scoring function."""
         new_radius = MAX_GOAL_DISTANCE
@@ -157,7 +260,7 @@ class GoalFunction(Node):
         while not reachable_goals and new_radius <= MAX_DISTANCE_ARENA:
             #check goals with current distance
             for g in self.goals:
-                dist = self.euclidean_distance(self.own_pose, g)
+                dist = self.calculate_path_distance(self.own_pose, g)
                 if dist <= new_radius:
                     reachable_goals.append(g)
             
@@ -180,8 +283,16 @@ class GoalFunction(Node):
         # Added, due to the fact that the goal function must be computed continuosly,
         # so that the robot can change goal, we need to cancel the current goal before sending a new one, 
         # otherwise Nav2 will reject the new goal
-        if self.navigating:
-            self.nav2_client.cancel_all_goals_async()
+
+       # if self.navigating:
+       #     self.nav2_client.cancel_all_goals_async()
+
+       # PROVA
+       #cancel the current driving task in ROS 2
+        if self.navigating and self.goal_handle is not None:
+            self.get_logger().info('Canceling previous navigation task to pursue a better one.')
+            self.goal_handle.cancel_goal_async()
+            self.goal_handle = None
 
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = PoseStamped()
@@ -202,6 +313,7 @@ class GoalFunction(Node):
     def goal_result_callback(self, future):
         self.current_goal = None   # reset current goal when result is received (either success or failure), to allow selecting a new goal
         self.navigating = False
+        self.goal_handle = None  # PROVA reset the receipt
     
     def goal_response_callback(self, future):
         """Estabilish if the goal was accepted or rejected by Nav2, 
@@ -211,7 +323,10 @@ class GoalFunction(Node):
             self.get_logger().warn('Goal rejected!')
             self.current_goal = None
             self.navigating = False
+            self.goal_handle = None #PROVA
             return
+        # <-- SAVE THE RECEIPT HERE PROVA
+        self.goal_handle = goal_handle
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self.goal_result_callback)
         
@@ -219,7 +334,7 @@ class GoalFunction(Node):
         """Check if the current goal has been reached."""
         if self.current_goal is None or self.own_pose is None:
             return False
-        return self.euclidean_distance(self.own_pose, self.current_goal) < GOAL_REACHED_THRESHOLD
+        return self.calculate_path_distance(self.own_pose, self.current_goal) < GOAL_REACHED_THRESHOLD
 
     def select_and_send_goal(self):
         self.get_logger().info(f'Goals: {len(self.goals)}, Own pose: {self.own_pose is not None}')
@@ -235,6 +350,16 @@ class GoalFunction(Node):
             best_goal = self.select_best_goal()
             if best_goal:
                 self.send_goal_to_nav2(best_goal)
+            
+        else:
+        # Goal in corso e non ancora raggiunto:  
+        # rimanda SOLO se è cambiata la scelta migliore
+         best_goal = self.select_best_goal()
+        if best_goal and (
+            abs(best_goal['x'] - self.current_goal['x']) > 1e-6 or
+            abs(best_goal['y'] - self.current_goal['y']) > 1e-6
+        ):
+            self.send_goal_to_nav2(best_goal)
 
 
 def main(args=None):
