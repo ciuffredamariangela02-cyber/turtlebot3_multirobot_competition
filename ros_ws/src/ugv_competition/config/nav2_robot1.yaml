@@ -36,13 +36,13 @@ controller_server:
     general_goal_checker:
       stateful: true
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.25
-      yaw_goal_tolerance: 0.25
+      xy_goal_tolerance: 0.05 #0.25
+      yaw_goal_tolerance: 6.28 #0.25 is 2 pi
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
-      time_steps: 56
+      time_steps: 25 #56 to think faster
       model_dt: 0.05
-      batch_size: 2000
+      batch_size: 600 #200
       ax_max: 3.0
       ax_min: -3.0
       ay_max: 3.0
@@ -50,12 +50,12 @@ controller_server:
       vx_std: 0.2
       vy_std: 0.2
       wz_std: 0.4
-      vx_max: 0.5
-      vx_min: -0.35
-      vy_max: 0.5
-      wz_max: 1.9
+      vx_max: 0.22      # Was 0.5
+      vx_min: -0.22     # Was -0.35
+      vy_max: 0.0       # Was 0.5 (TurtleBots are differential drive, they cannot strafe in Y!)
+      wz_max: 2.84      # Was 1.9 (Burger can rotate quite fast)
       iteration_count: 1
-      prune_distance: 1.7
+      prune_distance: 0.6 #1.7
       transform_tolerance: 0.5
       temperature: 0.3
       gamma: 0.015
@@ -71,6 +71,7 @@ local_costmap:
     ros__parameters:
       update_frequency: 1.0
       publish_frequency: 1.0
+      transform_tolerance: 1.5 #modifica
       global_frame: robot1/odom
       robot_base_frame: robot1/base_link
       use_sim_time: true
@@ -78,7 +79,7 @@ local_costmap:
       width: 3
       height: 3
       resolution: 0.05
-      robot_radius: 0.22
+      robot_radius: 0.12 #made it smaller for the simulation insead of 0.22
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
@@ -96,8 +97,8 @@ local_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        cost_scaling_factor: 2.0
+        inflation_radius: 0.40  # Was 0.55 - Allows them to get closer to walls and each other
       always_send_full_costmap: true
 
 global_costmap:
@@ -108,7 +109,7 @@ global_costmap:
       global_frame: map
       robot_base_frame: robot1/base_link
       use_sim_time: true
-      robot_radius: 0.22
+      robot_radius: 0.12
       resolution: 0.05
       track_unknown_space: true
       transform_tolerance: 0.5
@@ -133,8 +134,8 @@ global_costmap:
         transform_tolerance: 0.5
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 3.0
-        inflation_radius: 0.55
+        cost_scaling_factor: 2.0 #3.0 to make a gentler gradient
+        inflation_radius: 0.25 #0.55 
       always_send_full_costmap: true
 
 planner_server:
