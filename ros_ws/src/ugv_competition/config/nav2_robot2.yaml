@@ -83,14 +83,14 @@ local_costmap:
       width: 3
       height: 3
       resolution: 0.05
-      robot_radius: 0.12 #wasn 0.22
+      robot_radius: 0.18 #wasn 0.22
       plugins: ["obstacle_layer", "inflation_layer"]
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
         observation_sources: scan
         scan:
-          topic: /robot2/scan_relay
+          topic: /robot2/scan
           max_obstacle_height: 2.0
           clearing: true
           marking: true
@@ -102,7 +102,7 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.15
+        inflation_radius: 0.40
       always_send_full_costmap: true
 
 global_costmap:
@@ -113,7 +113,7 @@ global_costmap:
       global_frame: map
       robot_base_frame: robot2/base_link
       use_sim_time: true
-      robot_radius: 0.22
+      robot_radius: 0.18
       resolution: 0.05
       track_unknown_space: true
       transform_tolerance: 0.5
@@ -123,7 +123,7 @@ global_costmap:
         enabled: true
         observation_sources: scan
         scan:
-          topic: /robot2/scan_relay
+          topic: /robot2/scan
           max_obstacle_height: 2.0
           clearing: true
           marking: true
@@ -167,7 +167,7 @@ behavior_server:
   ros__parameters:
     local_costmap_topic: local_costmap/costmap_raw
     local_footprint_topic: local_costmap/published_footprint
-    cycle_frequency: 1.0
+    cycle_frequency: 10.0
     behavior_plugins: ["spin", "backup", "drive_on_heading", "wait"]
     spin:
       plugin: "nav2_behaviors::Spin"
@@ -213,7 +213,7 @@ collision_monitor:
     scan:
       source_timeout: 2.0
       type: "scan"
-      topic: /robot2/scan_relay
+      topic: /robot2/scan
       enabled: true
 
 velocity_smoother:
