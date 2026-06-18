@@ -16,6 +16,7 @@ from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, PoseStamped
 from std_msgs.msg import String
 from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import OccupancyGrid  # Added for wall detection
+from geometry_msgs.msg import Twist # Needed to handle deadlock
 import math
 import json
 
@@ -97,6 +98,12 @@ class GoalFunction(Node):
         self.create_subscription(OccupancyGrid, '/robot1/map', self.map_callback, map_qos) #same if i sue robot2
         self.map = None
 
+        # Velocity publisher, to handle deadlock
+        self.cmd_vel_pub = self.create_publisher(Twist, f'/{self.robot_name}/cmd_vel', 10)
+        # Variables to handle deadlock
+        self.last_position = None
+        self.last_position_time = None
+        self.stuck_timeout = 12.0  # seconds
 
         # State
         self.goals = []
@@ -104,7 +111,6 @@ class GoalFunction(Node):
         self.opponent_pose = None
         self.current_goal = None
         self.game_over = False
-        self.navigating = False
         self.own_goal_handle = None
         self.pending_goal = None 
         self.last_goal_sent_time = 0.0
@@ -192,19 +198,58 @@ class GoalFunction(Node):
 
         return True  # Ray reached the goal without hitting a wall
 
+    def is_stuck(self):
+        """
+        Function which controls if the robot is stuck in a position, because of the deadlock
+        """
+        if self.own_pose is None:
+            return False
+        now = self.get_clock().now().nanoseconds / 1e9
+        current_pos = (self.own_pose.position.x, self.own_pose.position.y)
+        
+        if self.last_position is None:
+            self.last_position = current_pos
+            self.last_position_time = now
+            return False
+        
+        dist = math.hypot(current_pos[0] - self.last_position[0],
+                        current_pos[1] - self.last_position[1])
+        
+        if dist > 0.05:  # robot has moved, reset stuck detection
+            self.last_position = current_pos
+            self.last_position_time = now
+            return False
+        
+        return (now - self.last_position_time) > self.stuck_timeout
+
+    def handle_stuck(self):
+        """Force the robot to back up when stuck."""
+        self.get_logger().warn('Robot is stuck! Backing up...')
+
+        # Cancel current Nav2 goal to stop conflicting cmd_vel
+        if self.own_goal_handle is not None:
+            self.own_goal_handle.cancel_goal_async()
+
+        self.current_goal = None
+        self.own_goal_handle = None
+        self.last_position = None  # reset stuck detection
+        
+        # Publish backup command for 2 seconds using a timer, to not block ROS2
+        self.stuck_counter = 0
+        self.stuck_timer = self.create_timer(0.1, self._backup_callback)
+
+    def _backup_callback(self):
+        """Callback to publish backup command for 2 seconds."""
+        twist = Twist()
+        twist.linear.x = -0.1
+        twist.angular.z = 0.5
+        self.cmd_vel_pub.publish(twist)
+        self.stuck_counter += 1
+        if self.stuck_counter >= 20:  # 20 * 0.1s = 2 seconds
+            self.stuck_timer.cancel()
+            self.stuck_counter = 0
 
     def score_goal(self, goal):
-        """Calculate the score for a goal using the greedy strategy.
-
-        score = -alpha * own_distance + beta * (opponent_distance - own_distance)
-
-        Higher score = better goal to pursue.
-        - own_distance: how far I am from the goal
-        - opponent_distance: how far the opponent is from the goal
-        - alpha: weight for my distance
-        - beta: weight for competitive advantage
-        """
-
         """Calculate the score for a goal using greedy strategy + Wall Penalties."""
         if self.own_pose is None:
             return -9999.0
@@ -229,23 +274,7 @@ class GoalFunction(Node):
 
         return -ALPHA * own_dist + BETA * competitive_advantage
 
-
-        # if self.own_pose is None:
-        #     return 0.0
-
-        # own_dist = self.euclidean_distance(self.own_pose, goal)
-
-        # if self.opponent_pose is not None:
-        #     opp_dist = self.euclidean_distance(self.opponent_pose, goal)
-        #     competitive_advantage = opp_dist - own_dist
-        # else:
-        #     competitive_advantage = 0.0  # no info about opponent
-
-        # return -ALPHA * own_dist + BETA * competitive_advantage
-
-
     
-
     def select_best_goal(self):
         """Select the best goal using the greedy scoring function."""
         new_radius = MAX_GOAL_DISTANCE
@@ -290,7 +319,15 @@ class GoalFunction(Node):
         else:
             self.actually_send_goal(goal)
 
-
+    def is_current_goal_still_active(self):
+        """Check if the current goal is still in the active goals list."""
+        if self.current_goal is None:
+            return False
+        for g in self.goals:
+            if abs(g['x'] - self.current_goal['x']) < 0.01 and \
+            abs(g['y'] - self.current_goal['y']) < 0.01:
+                return True
+        return False
 
     # Callback for when the cancel request is done, to send the pending goal
     def on_cancel_done(self, future):
@@ -299,13 +336,6 @@ class GoalFunction(Node):
             goal_to_send = self.pending_goal
             self.pending_goal = None   
             self.actually_send_goal(goal_to_send)
-
-
-    # Added these two callbacks for goal response to handle acceptance/rejection
-    def goal_result_callback(self, future):
-        self.current_goal = None   # reset current goal when result is received (either success or failure), to allow selecting a new goal
-        self.navigating = False
-        self.goal_handle = None  # PROVA reset the receipt
 
     # Helper function to actually send the goal to Nav2 after canceling the previous one
     def actually_send_goal(self, goal):
@@ -342,11 +372,9 @@ class GoalFunction(Node):
         if not goal_handle.accepted:
             self.get_logger().warn('Goal rejected!')
             self.current_goal = None
-            self.navigating = False
-            self.goal_handle = None #PROVA
+            self.own_goal_handle = None
             return
-        # <-- SAVE THE RECEIPT HERE PROVA
-        self.goal_handle = goal_handle
+        self.own_goal_handle = goal_handle
         result_future = goal_handle.get_result_async()
         result_future.add_done_callback(self.goal_result_callback)
         
@@ -372,7 +400,6 @@ class GoalFunction(Node):
         return best_score > current_score + adaptive_threshold
     
 
-
     def select_and_send_goal(self):
         
         self.get_logger().info(f'Goals: {len(self.goals)}, Own pose: {self.own_pose is not None}')
@@ -388,14 +415,27 @@ class GoalFunction(Node):
 
         if best_goal is None:
             return
-
-        # If current goal reached or no goal set, select a new one
-        if self.own_goal_handle is None or self.is_goal_reached():
+        
+        #PRIORITY 0: deadlock handling
+        # 0 priority because no matter which goal is sent, if the robot is stucked will not achieve it
+        if self.is_stuck():
+            self.handle_stuck()
+            return
+        # PRIORITY 1: If the current goal was taken by the opponent, react immediately
+        # without waiting for the switch threshold or minimum duration
+        if self.current_goal is not None and not self.is_current_goal_still_active():
+            self.get_logger().info('Current goal taken by opponent! Selecting new goal...')
             self.send_goal_to_nav2(best_goal)
-        # If currently navigating but a better goal is available, cancel current goal and select new one
-        elif best_goal != self.current_goal:
-            if self.should_switch_goal(best_goal):
-                self.send_goal_to_nav2(best_goal)
+
+        # PRIORITY 2: If no goal is set or the current goal has been reached,
+        # select the best available goal
+        elif self.own_goal_handle is None or self.is_goal_reached():
+            self.send_goal_to_nav2(best_goal)
+
+        # PRIORITY 3: If navigating but a better goal is available,
+        # cancel current navigation and switch to the new goal
+        elif best_goal != self.current_goal and self.should_switch_goal(best_goal):
+            self.send_goal_to_nav2(best_goal)
 
 
 
