@@ -19,6 +19,9 @@ RUN apt-get update -y && apt-get install -y ros-jazzy-ros-gz ros-jazzy-ros-gz-br
  
 # SLAM + RViz2
 RUN apt-get update -y && apt-get install -y ros-jazzy-slam-toolbox ros-jazzy-rviz2
+
+# tf transform 
+RUN apt-get update -y && apt-get install -y ros-jazzy-tf-transformations
  
 # rosdep
 RUN rosdep init || true && rosdep update
