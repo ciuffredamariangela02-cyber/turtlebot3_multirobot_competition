@@ -20,7 +20,7 @@ from geometry_msgs.msg import Twist # Needed to handle deadlock
 from tf_transformations import euler_from_quaternion #Needed to transform from quaternions to euler
 import math
 import json
-from ugv_competition.metrics.metrics import *
+from ugv_competition.metrics import metrics as metric_module
 
 
 # Strategy parameters
@@ -42,6 +42,11 @@ class GoalFunction(Node):
         self.declare_parameter('robot_name', 'robot1')
         self.robot_name = self.get_parameter('robot_name').value
 
+         # Metric selection parameter
+        self.declare_parameter('metric_name', 'euclidean')
+        self.metric_name = self.get_parameter('metric_name').value
+        
+        
         # Opponent name
         self.opponent_name = 'robot2' if self.robot_name == 'robot1' else 'robot1'
 
@@ -125,6 +130,23 @@ class GoalFunction(Node):
         self.get_logger().info(f'Own pose topic: {own_pose_topic}')
         self.get_logger().info(f'Nav2 action: {nav2_action}')
 
+        # Map string names to actual functions from the metrics module
+        self.metric_functions = {
+            'euclidean': metric_module.euclidean_distance,
+            'manhattan': metric_module.manhattan_distance,
+            'estimated_time': metric_module.estimated_time_to_goal,
+            'cluster': metric_module.cluster_score
+        }
+        
+        if self.metric_name not in self.metric_functions:
+            self.get_logger().error(f"Unknown metric '{self.metric_name}'. Defaulting to 'euclidean'.")
+            self.metric_name = 'euclidean'
+            
+        self.get_logger().info(f'Using metric: {self.metric_name}')
+
+
+      
+
     def goals_callback(self, msg):
         """Receive active goals from Game Master."""
         self.goals = [{'x': p.position.x, 'y': p.position.y} for p in msg.poses]
@@ -142,6 +164,16 @@ class GoalFunction(Node):
     def map_callback(self, msg):
         """Receive the OccupancyGrid map to check for walls"""
         self.map = msg
+
+    def get_metric_cost(self, pose, goal):
+        """Dynamically calls the selected metric function to calculate the cost/distance."""
+        if self.metric_name == 'cluster':
+            # Cluster score requires the list of all goals
+            return metric_module.cluster_score(goal, self.goals)
+        else:
+            return self.metric_functions[self.metric_name](pose, goal)
+
+    
 
     def bresenham_line(self, start_x, start_y, end_x, end_y):
         """
@@ -251,7 +283,7 @@ class GoalFunction(Node):
         if self.own_pose is None:
             return -9999.0
 
-        own_dist = self.euclidean_distance(self.own_pose, goal)
+        own_dist = self.get_metric_cost(self.own_pose, goal)
 
         # Check if a wall is in the way 
         if not self.bresenham_line(self.own_pose.position.x, self.own_pose.position.y, goal['x'], goal['y']):
@@ -260,7 +292,7 @@ class GoalFunction(Node):
             own_dist += WALL_PENALTY
 
         if self.opponent_pose is not None:
-            opp_dist = self.euclidean_distance(self.opponent_pose, goal)
+            opp_dist = metric_module.euclidean_distance(self.opponent_pose, goal)
             # Apply the same wall penalty to the opponent's distance for fair competition
             if not self.bresenham_line(self.opponent_pose.position.x, self.opponent_pose.position.y, goal['x'], goal['y']):
                 opp_dist += WALL_PENALTY
@@ -286,7 +318,7 @@ class GoalFunction(Node):
         while not reachable_goals and new_radius <= MAX_DISTANCE_ARENA:
             #check goals with current distance
             for g in self.goals:
-                dist = self.euclidean_distance(self.own_pose, g)
+                dist = self.get_metric_cost(self.own_pose, g)
                 if dist <= new_radius:
                     reachable_goals.append(g)
             
@@ -379,7 +411,7 @@ class GoalFunction(Node):
         """Check if the current goal has been reached."""
         if self.current_goal is None or self.own_pose is None:
             return False
-        return self.euclidean_distance(self.own_pose, self.current_goal) <= GOAL_REACHED_THRESHOLD
+        return metric_module.euclidean_distance(self.own_pose, self.current_goal) <= GOAL_REACHED_THRESHOLD
     
 
     def should_switch_goal(self, best_goal):
@@ -392,7 +424,7 @@ class GoalFunction(Node):
         current_score = self.score_goal(self.current_goal)
     
         # Adaptive threshold that increases as we get closer to the current goal, to prevent oscillations near the goal
-        dist_to_current = self.euclidean_distance(self.own_pose, self.current_goal)
+        dist_to_current = metric_module.euclidean_distance(self.own_pose, self.current_goal)
         adaptive_threshold = SWITCH_THRESHOLD + (1.0 / (dist_to_current + 0.1))
         return best_score > current_score + adaptive_threshold
     
