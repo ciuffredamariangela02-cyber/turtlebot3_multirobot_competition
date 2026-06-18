@@ -56,7 +56,10 @@ class TFRelay(Node):
         """Republish scan with namespace-prefixed frame_id."""
         new_msg = LaserScan()
         new_msg.header = msg.header
-        new_msg.header.frame_id = f'{namespace}/{msg.header.frame_id}'
+        # Only add the namespace prefix if it's not already there!
+        if not msg.header.frame_id.startswith(f"{namespace}/"):
+            new_msg.header.frame_id = f'{namespace}/{msg.header.frame_id}'
+
         new_msg.angle_min = msg.angle_min
         new_msg.angle_max = msg.angle_max
         new_msg.angle_increment = msg.angle_increment

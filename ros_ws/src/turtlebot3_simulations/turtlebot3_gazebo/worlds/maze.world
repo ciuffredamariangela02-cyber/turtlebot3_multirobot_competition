@@ -1,0 +1,237 @@
+<?xml version="1.0" ?>
+<!--
+  Maze world for ROS2 / Gazebo
+  ============================================================
+  Total size : 6 x 6 m
+  Origin     : (0, 0) at the centre of the maze
+  Coordinate system (Gazebo standard):
+      X → East  (right in the image)
+      Y → North (up   in the image)
+  The maze spans  X ∈ [-3, +3],  Y ∈ [-3, +3].
+
+  Wall geometry
+  ─────────────
+  thickness (t) = 0.05 m
+  height    (h) = 0.50 m
+  Lengths are snapped to the 0.5 m grid observed in the sketch.
+
+  Each <include> places one wall model.
+  • Horizontal wall → default pose (no rotation needed, size along X).
+  • Vertical   wall → yaw = 1.5708 rad (90°) so the long axis aligns with Y.
+  
+  Pose format: <pose>x y z roll pitch yaw</pose>
+  z is always 0.25 (half of wall height so the base sits on z=0).
+-->
+<sdf version="1.8">
+  <world name="maze_world">
+
+<!-- ── Physics ─────────────────────────────────────────── -->
+    <physics type="ode">
+      <max_step_size>0.01</max_step_size> # is was 0.001
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>100</real_time_update_rate> #it was 1000
+      <ode>
+        <solver>
+          <type>quick</type>
+          <iters>75</iters> # it was 150
+          <precon_iters>0</precon_iters>
+          <sor>1.400000</sor>
+          <use_dynamic_moi_rescaling>1</use_dynamic_moi_rescaling>
+        </solver>
+        <constraints>
+          <cfm>0.00001</cfm>
+          <erp>0.2</erp>
+          <contact_max_correcting_vel>2000.000000</contact_max_correcting_vel>
+          <contact_surface_layer>0.01000</contact_surface_layer>
+        </constraints>
+      </ode>
+    </physics>
+
+    <!-- ── Plugins ─────────────────────────────────────────── -->
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"></plugin>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"></plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"></plugin>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"> </plugin>
+
+        <!--  Ground plane & Sun -->
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Ground Plane</uri>
+    </include>
+    <include>
+      <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sun</uri>
+    </include>
+
+
+    <!-- ═══════════════════════════════════════════
+         OUTER PERIMETER  (4 walls, each 6 m)
+    ═══════════════════════════════════════════ -->
+
+    <!-- North border  Y=+3 -->
+    <model name="border_N">
+      <static>true</static>
+      <pose>0.0 3.0 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6.0 0.05 0.5</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6.0 0.05 0.5</size></box></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+
+    <!-- South border  Y=-3 -->
+    <model name="border_S">
+      <static>true</static>
+      <pose>0.0 -3.0 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6.0 0.05 0.5</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6.0 0.05 0.5</size></box></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- West border  X=-3  (vertical → yaw=π/2) -->
+    <model name="border_W">
+      <static>true</static>
+      <pose>-3.0 0.0 0.25 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6.0 0.05 0.5</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6.0 0.05 0.5</size></box></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- East border  X=+3 (vertical → yaw=π/2)-->
+    <model name="border_E">
+      <static>true</static>
+      <pose>3.0 0.0 0.25 0 0 1.5708</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>6.0 0.05 0.5</size></box></geometry></collision>
+        <visual name="vis"><geometry><box><size>6.0 0.05 0.5</size></box></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+  
+
+    <!-- ═══════════════════════════════════════════
+         INTERNAL WALLS
+    ═══════════════════════════════════════════ -->
+    <!-- I QUADRANT -->
+    <include>
+      <uri>model://pattern2</uri>
+      <name>patternI_1</name>
+      <pose>2.25 2.25 0.0 0 0 0</pose> 
+    </include> 
+
+    <include>
+      <uri>model://pattern2</uri>
+      <name>patternI_2</name>
+      <pose>2.25 0.75 0.0 0 0 1.5708</pose> 
+    </include>
+
+    <include>
+      <uri>model://pattern1</uri>
+      <name>patternI_3</name>
+      <pose>0.75 2.25 0.0 0 0 -1.5708</pose> 
+    </include>
+
+    <include>
+      <uri>model://pattern2</uri>
+      <name>patternI_4</name>
+      <pose>0.75 0.75 0.0 0 0 3.1416</pose> 
+    </include>
+
+
+    <!-- II QUADRANT -->
+    <include>
+      <uri>model://pattern3</uri>
+      <name>patternII_1</name>
+      <pose>-2.25 2.25 0.0 0 0 -1.5708</pose> 
+    </include> 
+
+    <include>
+      <uri>model://pattern1</uri>
+      <name>patternII_2</name>
+      <pose>-2.25 0.75 0.0 0 0 1.5708</pose> 
+    </include>
+
+    <include>
+      <uri>model://pattern2</uri>
+      <name>patternII_3</name>
+      <pose>-0.75 2.25 0.0 0 0 -1.5708</pose> 
+    </include>
+
+    <include>
+      <uri>model://pattern1</uri>
+      <name>patternII_4</name>
+      <pose>-0.75 0.75 0.0 0 0 1.5708</pose> 
+    </include>
+
+    <!-- III QUADRANT -->
+    <include>
+      <uri>model://pattern2</uri>
+      <name>patternIII_1</name>
+      <pose>-2.25 -2.25 0.0 0 0 3.1416</pose> 
+    </include> 
+
+    <include>
+      <uri>model://pattern1</uri>
+      <name>patternIII_2</name>
+      <pose>-2.25 -0.75 0.0 0 0 1.5708</pose> 
+    </include>
+
+    <include>
+      <uri>model://pattern3</uri>
+      <name>patternIII_3</name>
+      <pose>-0.75 -2.25 0.0 0 0 0</pose> 
+    </include>
+
+    <include>
+      <uri>model://pattern1</uri>
+      <name>patternIII_4</name>
+      <pose>-0.75 -0.75 0.0 0 0 3.1416</pose>  
+    </include>
+
+
+    <!-- IV QUADRANT -->
+    <include>
+      <uri>model://pattern3</uri>
+      <name>patternIV_1</name>
+      <pose>2.25 -2.25 0.0 0 0 0</pose> 
+    </include> 
+
+    <include>
+      <uri>model://pattern1</uri>
+      <name>patternIV_2</name>
+      <pose>2.25 -0.75 0.0 0 0 1.5708</pose> 
+    </include>
+
+    <include>
+      <uri>model://pattern2</uri>
+      <name>patternIV_3</name>
+      <pose>0.75 -2.25 0.0 0 0 -1.5708</pose> 
+    </include>
+
+    <include>
+      <uri>model://pattern3</uri>
+      <name>patternIV_4</name>
+      <pose>0.75 -0.75 0.0 0 0 3.1416</pose>  
+    </include>
+
+
+
+    
+    
+
+
+
+
+ 
+  </world>
+</sdf>
