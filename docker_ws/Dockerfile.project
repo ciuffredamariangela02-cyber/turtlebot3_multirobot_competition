@@ -18,4 +18,10 @@ RUN apt-get update -y && apt-get install -y ros-jazzy-turtlebot3 ros-jazzy-turtl
 
 # SLAM + RViz2
 RUN apt-get update -y && apt-get install -y ros-jazzy-slam-toolbox ros-jazzy-rviz2
- 
+
+# tf transform 
+RUN apt-get update -y && apt-get install -y ros-jazzy-tf-transformations
+
+# Bashrc
+RUN echo "source /opt/ros/jazzy/setup.bash" >> /root/.bashrc
+RUN echo "export TURTLEBOT3_MODEL=burger" >> /root/.bashrc
