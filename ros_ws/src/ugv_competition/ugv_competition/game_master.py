@@ -29,10 +29,10 @@ from nav_msgs.msg import OccupancyGrid
 # Game parameters
 NUM_GOALS = 10
 GOAL_RADIUS = 0.3  
-ARENA_X_MIN = -5.0  # Expanded bounds to cover larger maps
-ARENA_X_MAX = 5.0
-ARENA_Y_MIN = -5.0
-ARENA_Y_MAX = 5.0
+ARENA_X_MIN = -2.8  
+ARENA_X_MAX = 2.8
+ARENA_Y_MIN = -3.8
+ARENA_Y_MAX = 3.8
 PUBLISH_RATE = 1.0  # Hz
 MIN_GOAL_DISTANCE = GOAL_RADIUS * 4  
 OBSTACLE_MARGIN = 0.35  
