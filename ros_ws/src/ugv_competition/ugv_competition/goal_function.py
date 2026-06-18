@@ -17,8 +17,11 @@ from std_msgs.msg import String
 from nav2_msgs.action import NavigateToPose
 from nav_msgs.msg import OccupancyGrid  # Added for wall detection
 from geometry_msgs.msg import Twist # Needed to handle deadlock
+from tf_transformations import euler_from_quaternion #Needed to transform from quaternions to euler
 import math
 import json
+from ugv_competition.metrics.metrics import *
+
 
 # Strategy parameters
 ALPHA = 1.0   # weight for own distance (higher = prefer closer goals)
@@ -140,12 +143,6 @@ class GoalFunction(Node):
         """Receive the OccupancyGrid map to check for walls"""
         self.map = msg
 
-    def euclidean_distance(self, pose, goal):
-        """Calculate Euclidean distance between a pose and a goal."""
-        dx = pose.position.x - goal['x']
-        dy = pose.position.y - goal['y']
-        return math.hypot(dx, dy)
-    
     def bresenham_line(self, start_x, start_y, end_x, end_y):
         """
         Casts a virtual ray from start to end on the OccupancyGrid.
