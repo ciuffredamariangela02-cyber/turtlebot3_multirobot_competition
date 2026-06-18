@@ -1,5 +1,6 @@
 #launch file to choose a specific metric for each robot
-
+#ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan
+#or choose a diff metric
 import os
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction
