@@ -1,47 +1,56 @@
-#launch file to choose a specific metric for each robot
-#ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan
-#or choose a diff metric
+# metric.launch.py
+# Launch file for the competition with configurable metrics, map and goal placement.
+#
+# Usage:
+#   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=custom
+#   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=cluster map_name:=simmetric
+#   ros2 launch ugv_competition metric.launch.py map_name:=symmetric goal_placement:=random
+#
+# Available metrics: euclidean, manhattan, estimated_time, cluster
+# Available maps: custom, symmetric
+# Available goal placements: random, symmetric (default: random for custom, symmetric for symmetric)
+
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, GroupAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction, TimerAction, ExecuteProcess
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.actions import TimerAction, ExecuteProcess
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import Node, PushRosNamespace
+from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 
-
-def generate_launch_description():
+def launch_setup(context, *args, **kwargs):
 
     pkg_ugv = get_package_share_directory('ugv_competition')
     pkg_tb3_gazebo = get_package_share_directory('turtlebot3_gazebo')
-    pkg_nav2 = get_package_share_directory('nav2_bringup')
 
-    # --- Launch Arguments ---
-    map_arg = DeclareLaunchArgument(
-        'map',
-        default_value=os.path.join(pkg_ugv, 'maps', 'custom_map.yaml'),
-        description='Path to map file')
+    # Map selected
+    map_name = context.launch_configurations.get('map_name', 'custom')
 
-    # Metric arguments for each robot
-    robot1_metric_arg = DeclareLaunchArgument(
-        'robot1_metric',
-        default_value='euclidean',
-        description='Metric for robot1 (options: euclidean, manhattan, estimated_time, cluster)')
+    # Goal placement - if no goal placement has been specified, symmetric is used for symmetric map, and random for the others
+    goal_placement = context.launch_configurations.get('goal_placement', '')
+    if not goal_placement:
+        goal_placement = 'symmetric' if map_name == 'symmetric' else 'random'
 
-    robot2_metric_arg = DeclareLaunchArgument(
-        'robot2_metric',
-        default_value='manhattan',
-        description='Metric for robot2 (options: euclidean, manhattan, estimated_time, cluster)')
+    # Metric
+    robot1_metric = context.launch_configurations.get('robot1_metric', 'euclidean')
+    robot2_metric = context.launch_configurations.get('robot2_metric', 'euclidean')
 
-    map_file = LaunchConfiguration('map')
+    # Select world launch file, map file and spawn positions based on map_name
+    if map_name == 'symmetric':
+        world_launch = os.path.join(pkg_tb3_gazebo, 'launch', 'simmetric_world.launch.py')
+        map_file = os.path.join(pkg_ugv, 'maps', 'simmetric_map.yaml')
+        robot1_x, robot1_y = '0.0', '-3.7'
+        robot2_x, robot2_y = '0.0', '3.7'
+    else:  # default: custom
+        world_launch = os.path.join(pkg_tb3_gazebo, 'launch', 'custom_world.launch.py')
+        map_file = os.path.join(pkg_ugv, 'maps', 'custom_map.yaml')
+        robot1_x, robot1_y = '2.5', '-1.5'
+        robot2_x, robot2_y = '2.5', '-2.5'
 
     # Gazebo (t=0s)
     gazebo = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(pkg_tb3_gazebo, 'launch', 'custom_world.launch.py')
-        )
+        PythonLaunchDescriptionSource(world_launch)
     )
 
     # TF Relay (t=0s)
@@ -56,7 +65,7 @@ def generate_launch_description():
         }]
     )
 
-    # Rviz (t=7s)
+    # RViz (t=7s)
     rviz_cmd = TimerAction(
         period=7.0,
         actions=[Node(
@@ -68,6 +77,7 @@ def generate_launch_description():
         )]
     )
 
+    # Nav2 Robot 1 (t=10s)
     nav2_robot1 = TimerAction(
         period=10.0,
         actions=[IncludeLaunchDescription(
@@ -83,6 +93,7 @@ def generate_launch_description():
         )]
     )
 
+    # Nav2 Robot 2 (t=10s)
     nav2_robot2 = TimerAction(
         period=10.0,
         actions=[IncludeLaunchDescription(
@@ -98,33 +109,33 @@ def generate_launch_description():
         )]
     )
 
-    # --- Initial pose Robot 1  ---
+    # Initial pose Robot 1 (t=25s)
     initial_pose_robot1_cmd = TimerAction(
         period=25.0,
         actions=[
             ExecuteProcess(
                 cmd=['ros2', 'topic', 'pub', '--times', '10', '/robot1/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
-                    '{"header": {"frame_id": "map"}, "pose": {"pose": {"position": {"x": 2.5, "y": -1.5, "z": 0.0}, "orientation": {"w": 1.0}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}'],
+                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot1_x}, "y": {robot1_y}, "z": 0.0}}, "orientation": {{"w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
                 output='screen'
             )
         ]
     )
 
-    # --- Initial pose Robot 2 ---
+    # Initial pose Robot 2 (t=25s)
     initial_pose_robot2_cmd = TimerAction(
         period=25.0,
         actions=[
             ExecuteProcess(
                 cmd=['ros2', 'topic', 'pub', '--times', '10', '/robot2/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
-                    '{"header": {"frame_id": "map"}, "pose": {"pose": {"position": {"x": 2.5, "y": -2.5, "z": 0.0}, "orientation": {"w": 1.0}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}'],
+                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot2_x}, "y": {robot2_y}, "z": 0.0}}, "orientation": {{"w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
                 output='screen'
             )
         ]
     )
 
-    # --- Game Master ---
+    # Game Master (t=40s)
     game_master_cmd = TimerAction(
         period=40.0,
         actions=[Node(
@@ -132,12 +143,12 @@ def generate_launch_description():
             executable='game_master',
             name='game_master',
             output='screen',
-            parameters=[{'use_sim_time': True}]
+            parameters=[{'use_sim_time': True,
+            'goal_placement': goal_placement}]
         )]
     )
 
-    # --- Goal Function Robot 1 ---
-    # Passing the metric argument to the node parameters
+    # Goal Function Robot 1 (t=45s)
     goal_function_robot1_cmd = TimerAction(
         period=45.0,
         actions=[Node(
@@ -147,15 +158,14 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'robot_name': 'robot1',
-                'metric_name': LaunchConfiguration('robot1_metric'), # <--- NEW
+                'metric_name': robot1_metric,
                 'use_namespace': True,
                 'use_sim_time': True
             }]
         )]
     )
 
-    # --- Goal Function Robot 2 ---
-    # Passing the metric argument to the node parameters
+    # Goal Function Robot 2 (t=45s)
     goal_function_robot2_cmd = TimerAction(
         period=45.0,
         actions=[Node(
@@ -165,14 +175,14 @@ def generate_launch_description():
             output='screen',
             parameters=[{
                 'robot_name': 'robot2',
-                'metric_name': LaunchConfiguration('robot2_metric'), # <--- NEW
+                'metric_name': robot2_metric,
                 'use_namespace': True,
                 'use_sim_time': True
             }]
         )]
     )
 
-    # Robot Label 
+    # Robot Label (t=41s)
     robot_label_cmd = TimerAction(
         period=41.0,
         actions=[Node(
@@ -180,14 +190,11 @@ def generate_launch_description():
             executable='robot_label',
             name='robot_label',
             output='screen',
-            parameters=[{'use_sim_time':True}]
+            parameters=[{'use_sim_time': True}]
         )]
     )
 
-    return LaunchDescription([
-        map_arg,
-        robot1_metric_arg,  
-        robot2_metric_arg, 
+    return [
         gazebo,
         tf_relay,
         rviz_cmd,
@@ -198,5 +205,30 @@ def generate_launch_description():
         game_master_cmd,
         goal_function_robot1_cmd,
         goal_function_robot2_cmd,
-        robot_label_cmd
+        robot_label_cmd,
+    ]
+
+
+def generate_launch_description():
+
+    map_name_arg = DeclareLaunchArgument(
+        'map_name',
+        default_value='custom',
+        description='Map to use: custom or symmetric')
+
+    robot1_metric_arg = DeclareLaunchArgument(
+        'robot1_metric',
+        default_value='euclidean',
+        description='Metric for robot1: euclidean, manhattan, estimated_time, cluster')
+
+    robot2_metric_arg = DeclareLaunchArgument(
+        'robot2_metric',
+        default_value='euclidean',
+        description='Metric for robot2: euclidean, manhattan, estimated_time, cluster')
+
+    return LaunchDescription([
+        map_name_arg,
+        robot1_metric_arg,
+        robot2_metric_arg,
+        OpaqueFunction(function=launch_setup),
     ])
