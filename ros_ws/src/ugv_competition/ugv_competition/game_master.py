@@ -47,7 +47,11 @@ class GameMaster(Node):
         amcl_qos.reliability = ReliabilityPolicy.RELIABLE
         amcl_qos.durability = DurabilityPolicy.TRANSIENT_LOCAL
 
-
+        # New parameter used to control if the goals are generated in a random or simmetric way wrt the map
+        # Simmetric way was usefull to test different metrics
+        self.declare_parameter('goal_placement', 'random')
+        self.goal_placement = self.get_parameter('goal_placement').value
+        
         # Publishers
         self.goals_pub = self.create_publisher(PoseArray, '/game/goals', qos)
         self.score_pub = self.create_publisher(String, '/game/score', qos)
@@ -180,8 +184,37 @@ class GameMaster(Node):
                 return False
  
         return True
- 
-    def generate_goals(self):
+
+    def generate_goals_symmetric(self):
+        """Generate NUM_GOALS goals placed symmetrically around the arena center.
+        Half the goals are placed in the top zone (y > center_y) and half in the 
+        bottom zone (y < center_y), mirrored around the center point.
+        """
+        self.goals = []
+        center_x = (ARENA_X_MIN + ARENA_X_MAX) / 2
+        center_y = (ARENA_Y_MIN + ARENA_Y_MAX) / 2
+        
+        attempts = 0
+        half = NUM_GOALS // 2
+        
+        while len(self.goals) < half and attempts < 5000:
+            x = random.uniform(ARENA_X_MIN, ARENA_X_MAX)
+            y = random.uniform(center_y + 0.3, ARENA_Y_MAX)
+            mirror_x = 2 * center_x - x
+            mirror_y = 2 * center_y - y
+            
+            # Only add the pair if BOTH positions are valid
+            if self.is_valid_goal(x, y) and self.is_valid_goal(mirror_x, mirror_y):
+                self.goals.append({'id': len(self.goals), 'x': x, 'y': y,
+                                'active': True, 'collected_by': None})
+                self.goals.append({'id': len(self.goals), 'x': mirror_x, 'y': mirror_y,
+                                'active': True, 'collected_by': None})
+            attempts += 1
+        
+        if len(self.goals) < NUM_GOALS:
+            self.get_logger().warn(f'Could only generate {len(self.goals)} symmetric goals.')
+            
+    def generate_goals_random(self):
         """Generate NUM_GOALS random positions mathematically guaranteed to be free."""
         self.goals = []
         attempts = 0
@@ -194,7 +227,16 @@ class GameMaster(Node):
             
         if len(self.goals) < NUM_GOALS:
             self.get_logger().warn(f'Could only generate {len(self.goals)} out of {NUM_GOALS} goals. Map might be too cluttered.')
- 
+    
+    def generate_goals(self):
+        """ 
+        Select how to generate goals: symmetric or random 
+        """
+        if self.goal_placement == 'symmetric':
+            self.generate_goals_symmetric()
+        else:
+            self.generate_goals_random()
+
     def distance(self, pose, goal):
         dx = pose.position.x - goal['x']
         dy = pose.position.y - goal['y']
