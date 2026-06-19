@@ -24,12 +24,12 @@ from ugv_competition.metrics import metrics as metric_module
 
 
 # Strategy parameters
-ALPHA = 1.0   # weight for own distance (higher = prefer closer goals)
-BETA = 1.5    # weight for competitive advantage (higher = prefer blocking opponent)
+ALPHA = 3.0   # weight for own distance (higher = prefer closer goals)
+BETA = 0.5    # weight for competitive advantage (higher = prefer blocking opponent)
 GOAL_REACHED_THRESHOLD = 0.10  # meters
 MAX_GOAL_DISTANCE = 3.0  # max distance to consider a goal reachable
 MAX_DISTANCE_ARENA = 10.0  # max distance in the arena for goal selection
-WALL_PENALTY = 2.0  # Heavy penalty (in meters) added if a wall blocks the path to the goal
+WALL_PENALTY = 10.0  # Heavy penalty (in meters) added if a wall blocks the path to the goal
 MIN_GOAL_DURATION = 2.0    # min seconds to change goal
 SWITCH_THRESHOLD = 0.3     # min margin to change goal
 
@@ -42,7 +42,7 @@ class GoalFunction(Node):
         self.declare_parameter('robot_name', 'robot1')
         self.robot_name = self.get_parameter('robot_name').value
 
-         # Metric selection parameter
+        # Metric selection parameter
         self.declare_parameter('metric_name', 'euclidean')
         self.metric_name = self.get_parameter('metric_name').value
         
@@ -167,11 +167,8 @@ class GoalFunction(Node):
 
     def get_metric_cost(self, pose, goal):
         """Dynamically calls the selected metric function to calculate the cost/distance."""
-        if self.metric_name == 'cluster':
-            # Cluster score requires the list of all goals
-            return metric_module.cluster_score(goal, self.goals)
-        else:
-            return self.metric_functions[self.metric_name](pose, goal)
+        
+        return self.metric_functions[self.metric_name](pose, goal)
 
     
 
@@ -181,8 +178,13 @@ class GoalFunction(Node):
         Returns True if the path is clear, False if a wall blocks it.
         Uses Bresenham's Line Algorithm.
         """
+        
+    
         if self.map is None:
+            self.get_logger().warn('Map not received yet! Assuming clear path.')
             return True  # If no map yet, assume clear
+        
+
 
         resolution = self.map.info.resolution
         origin_x = self.map.info.origin.position.x
@@ -292,7 +294,7 @@ class GoalFunction(Node):
             own_dist += WALL_PENALTY
 
         if self.opponent_pose is not None:
-            opp_dist = metric_module.euclidean_distance(self.opponent_pose, goal)
+            opp_dist = self.get_metric_cost(self.opponent_pose, goal)
             # Apply the same wall penalty to the opponent's distance for fair competition
             if not self.bresenham_line(self.opponent_pose.position.x, self.opponent_pose.position.y, goal['x'], goal['y']):
                 opp_dist += WALL_PENALTY
