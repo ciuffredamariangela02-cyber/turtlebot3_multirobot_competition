@@ -219,12 +219,12 @@ def generate_launch_description():
     robot1_metric_arg = DeclareLaunchArgument(
         'robot1_metric',
         default_value='euclidean',
-        description='Metric for robot1: euclidean, manhattan, estimated_time, cluster')
+        description='Metric for robot1: euclidean, manhattan, estimated_time')
 
     robot2_metric_arg = DeclareLaunchArgument(
         'robot2_metric',
         default_value='euclidean',
-        description='Metric for robot2: euclidean, manhattan, estimated_time, cluster')
+        description='Metric for robot2: euclidean, manhattan, estimated_time')
 
     return LaunchDescription([
         map_name_arg,
