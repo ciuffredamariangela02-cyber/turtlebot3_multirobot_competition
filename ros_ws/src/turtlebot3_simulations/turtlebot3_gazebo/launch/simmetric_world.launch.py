@@ -15,9 +15,9 @@ def generate_launch_description():
 
     # Symmetric spawn positions relative to arena center 
     x_pose_r1 = LaunchConfiguration('x_pose',    default='0')
-    y_pose_r1 = LaunchConfiguration('y_pose',     default='-3.7')
+    y_pose_r1 = LaunchConfiguration('y_pose',     default='-0.3')
     x_pose_r2 = LaunchConfiguration('x_pose_r2', default='0')
-    y_pose_r2 = LaunchConfiguration('y_pose_r2', default='3.7')
+    y_pose_r2 = LaunchConfiguration('y_pose_r2', default='0.3')
 
     world = os.path.join(
         get_package_share_directory('turtlebot3_gazebo'),
