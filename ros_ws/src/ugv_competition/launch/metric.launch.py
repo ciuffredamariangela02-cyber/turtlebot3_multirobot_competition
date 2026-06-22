@@ -3,7 +3,7 @@
 #
 # Usage:
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=custom
-#   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=cluster map_name:=simmetric
+#   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=cluster map_name:=symmetric
 #   ros2 launch ugv_competition metric.launch.py map_name:=symmetric goal_placement:=random
 #
 # Available metrics: euclidean, manhattan, estimated_time, cluster
@@ -40,8 +40,8 @@ def launch_setup(context, *args, **kwargs):
     if map_name == 'symmetric':
         world_launch = os.path.join(pkg_tb3_gazebo, 'launch', 'simmetric_world.launch.py')
         map_file = os.path.join(pkg_ugv, 'maps', 'simmetric_map.yaml')
-        robot1_x, robot1_y = '0.0', '-3.7'
-        robot2_x, robot2_y = '0.0', '3.7'
+        robot1_x, robot1_y = '0.0', '-0.3'
+        robot2_x, robot2_y = '0.0', '0.3'
     else:  # default: custom
         world_launch = os.path.join(pkg_tb3_gazebo, 'launch', 'custom_world.launch.py')
         map_file = os.path.join(pkg_ugv, 'maps', 'custom_map.yaml')
