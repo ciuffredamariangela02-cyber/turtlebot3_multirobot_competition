@@ -9,7 +9,7 @@ bt_navigator:
     default_nav_through_poses_bt_xml: "/opt/ros/jazzy/share/nav2_bt_navigator/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml"
     
     bt_loop_duration: 10        # ms
-    server_timeout: 5000        # ms (5 seconds instead of default 2s)
+    server_timeout: 10000        # ms (5 seconds instead of default 2s)
     always_reload_bt_xml: true #false
 
     goal_blackboard_id: goal
