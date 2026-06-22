@@ -25,8 +25,9 @@ from ugv_competition.metrics import metrics as metric_module
 
 # Strategy parameters
 ALPHA = 3.0   # weight for own distance (higher = prefer closer goals)
-BETA = 0.5    # weight for competitive advantage (higher = prefer blocking opponent)
-GOAL_REACHED_THRESHOLD = 0.10  # meters
+BETA = 3.0    # weight for competitive advantage (higher = prefer blocking opponent)
+GAMMA = 3.0 
+GOAL_REACHED_THRESHOLD = 0.20  # meters
 MAX_GOAL_DISTANCE = 3.0  # max distance to consider a goal reachable
 MAX_DISTANCE_ARENA = 10.0  # max distance in the arena for goal selection
 WALL_PENALTY = 10.0  # Heavy penalty (in meters) added if a wall blocks the path to the goal
@@ -287,24 +288,29 @@ class GoalFunction(Node):
 
         own_dist = self.get_metric_cost(self.own_pose, goal)
 
+        score = 0
+
         # Check if a wall is in the way 
         if not self.bresenham_line(self.own_pose.position.x, self.own_pose.position.y, goal['x'], goal['y']):
             # if a wall blocks the straight path add a heavy penalty.
             # This forces the robot to finish all goals on its own side before crossing the wall.
-            own_dist += WALL_PENALTY
+            score += WALL_PENALTY
+            #own_dist += WALL_PENALTY
 
         if self.opponent_pose is not None:
             opp_dist = self.get_metric_cost(self.opponent_pose, goal)
             # Apply the same wall penalty to the opponent's distance for fair competition
             if not self.bresenham_line(self.opponent_pose.position.x, self.opponent_pose.position.y, goal['x'], goal['y']):
-                opp_dist += WALL_PENALTY
+                #opp_dist += WALL_PENALTY
+                score += WALL_PENALTY
                 
             competitive_advantage = opp_dist - own_dist
         else:
             competitive_advantage = 0.0  
+        
+        score += -ALPHA * own_dist + BETA * competitive_advantage + GAMMA * metric_module.cluster_score(goal, self.goals)
 
-        return -ALPHA * own_dist + BETA * competitive_advantage
-
+        return score
     
     def select_best_goal(self):
         """Select the best goal using the greedy scoring function."""
