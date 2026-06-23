@@ -28,7 +28,7 @@ from nav_msgs.msg import OccupancyGrid
 
 # Game parameters
 NUM_GOALS = 10
-GOAL_RADIUS = 0.3  
+GOAL_RADIUS = 0.2  
 ARENA_X_MIN = -2.8  
 ARENA_X_MAX = 2.8
 ARENA_Y_MIN = -3.8
@@ -51,6 +51,14 @@ class GameMaster(Node):
         # Simmetric way was usefull to test different metrics
         self.declare_parameter('goal_placement', 'random')
         self.goal_placement = self.get_parameter('goal_placement').value
+
+        # Goal seed for reproducibility
+        self.declare_parameter('goal_seed', -1)
+        goal_seed = self.get_parameter('goal_seed').value
+
+        if goal_seed >= 0:
+            random.seed(goal_seed)
+
         
         # Publishers
         self.goals_pub = self.create_publisher(PoseArray, '/game/goals', qos)
@@ -383,3 +391,4 @@ def main(args=None):
  
 if __name__ == '__main__':
     main()
+
