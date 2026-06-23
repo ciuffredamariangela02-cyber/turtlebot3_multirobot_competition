@@ -4,8 +4,9 @@
 # Usage:
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=custom
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=cluster map_name:=symmetric
-#   ros2 launch ugv_competition metric.launch.py map_name:=symmetric goal_placement:=random
-#
+#   ros2 launch ugv_competition metric.launch.py map_name:=symmetric goal_seed:=42 goal_placement:=random
+# 
+# Set goal seed to 42 for reproducibility with the reported simulations in the report
 # Available metrics: euclidean, manhattan, estimated_time, cluster
 # Available maps: custom, symmetric
 # Available goal placements: random, symmetric (default: random for custom, symmetric for symmetric)
@@ -114,7 +115,7 @@ def launch_setup(context, *args, **kwargs):
         period=25.0,
         actions=[
             ExecuteProcess(
-                cmd=['ros2', 'topic', 'pub', '--times', '10', '/robot1/initialpose',
+                cmd=['ros2', 'topic', 'pub', '--times', '15', '/robot1/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
                     f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot1_x}, "y": {robot1_y}, "z": 0.0}}, "orientation": {{"w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
                 output='screen'
@@ -127,7 +128,7 @@ def launch_setup(context, *args, **kwargs):
         period=25.0,
         actions=[
             ExecuteProcess(
-                cmd=['ros2', 'topic', 'pub', '--times', '10', '/robot2/initialpose',
+                cmd=['ros2', 'topic', 'pub', '--times', '15', '/robot2/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
                     f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot2_x}, "y": {robot2_y}, "z": 0.0}}, "orientation": {{"w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
                 output='screen'
@@ -143,8 +144,11 @@ def launch_setup(context, *args, **kwargs):
             executable='game_master',
             name='game_master',
             output='screen',
-            parameters=[{'use_sim_time': True,
-            'goal_placement': goal_placement}]
+            parameters=[{
+                'use_sim_time': True,
+                'goal_placement': goal_placement,
+                'goal_seed': int(context.launch_configurations.get('goal_seed', '-1'))
+            }]
         )]
     )
 
@@ -219,16 +223,22 @@ def generate_launch_description():
     robot1_metric_arg = DeclareLaunchArgument(
         'robot1_metric',
         default_value='euclidean',
-        description='Metric for robot1: euclidean, manhattan, estimated_time')
+        description='Metric for robot1: euclidean, manhattan, estimated_time, cluster')
 
     robot2_metric_arg = DeclareLaunchArgument(
         'robot2_metric',
         default_value='euclidean',
-        description='Metric for robot2: euclidean, manhattan, estimated_time')
+        description='Metric for robot2: euclidean, manhattan, estimated_time, cluster')
+
+    goal_seed_arg = DeclareLaunchArgument(
+        'goal_seed',
+        default_value='-1',
+        description='Random seed for goal generation. -1 = random seed.')
 
     return LaunchDescription([
         map_name_arg,
         robot1_metric_arg,
         robot2_metric_arg,
+        goal_seed_arg,
         OpaqueFunction(function=launch_setup),
     ])
