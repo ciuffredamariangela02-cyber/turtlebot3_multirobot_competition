@@ -37,7 +37,7 @@ GAMMA = 1.0
 GOAL_REACHED_THRESHOLD = 0.30  # meters
 MAX_GOAL_DISTANCE = 3.0  # max distance to consider a goal reachable
 MAX_DISTANCE_ARENA = 10.0  # max distance in the arena for goal selection
-WALL_PENALTY = 10.0  # Heavy penalty (in meters) added if a wall blocks the path to the goal
+WALL_PENALTY = 15.0  # Heavy penalty (in meters) added if a wall blocks the path to the goal
 MIN_GOAL_DURATION = 2.0    # min seconds to change goal
 SWITCH_THRESHOLD = 0.3     # min margin to change goal
 
