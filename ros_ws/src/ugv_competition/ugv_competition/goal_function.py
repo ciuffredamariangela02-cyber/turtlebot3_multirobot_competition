@@ -32,7 +32,7 @@ class NavState(Enum):
 
 # Strategy parameters
 ALPHA = 3.0   # weight for own distance (higher = prefer closer goals)
-BETA = 4.0    # weight for competitive advantage (higher = prefer blocking opponent)
+BETA = 5.0    # weight for competitive advantage (higher = prefer avoid goal where opponent is nearer than him)
 GAMMA = 1.0 
 GOAL_REACHED_THRESHOLD = 0.30  # meters
 MAX_GOAL_DISTANCE = 3.0  # max distance to consider a goal reachable
@@ -442,7 +442,7 @@ class GoalFunction(Node):
 
     def _on_goal_result(self, future):
         if self.nav_state in [NavState.CANCELLING, NavState.RECOVERING, NavState.SENDING]:
-            return  # il cancel gestirà lui la prossima transizione
+            return  
         self.own_goal_handle = None
         self.current_goal = None
         self.nav_state = NavState.IDLE           
