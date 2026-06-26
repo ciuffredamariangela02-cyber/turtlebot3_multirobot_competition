@@ -37,7 +37,7 @@ GAMMA = 1.0
 GOAL_REACHED_THRESHOLD = 0.30  # meters
 MAX_GOAL_DISTANCE = 3.0  # max distance to consider a goal reachable
 MAX_DISTANCE_ARENA = 10.0  # max distance in the arena for goal selection
-WALL_PENALTY = 10.0  # Heavy penalty (in meters) added if a wall blocks the path to the goal
+WALL_PENALTY = 15.0  # Heavy penalty (in meters) added if a wall blocks the path to the goal
 MIN_GOAL_DURATION = 2.0    # min seconds to change goal
 SWITCH_THRESHOLD = 0.3     # min margin to change goal
 
@@ -224,7 +224,7 @@ class GoalFunction(Node):
             # Check if the cell is an obstacle (0 = free, >0 = wall/obstacle, -1 = unknown)
             # We only block on known walls (>0) to avoid localization noise blinding the robot
             idx = y0 * width + x0
-            if self.map.data[idx] > 0: 
+            if self.map.data[idx] > 25: #to avoid artifacts or noise
                 return False  # Blocked by a wall!
 
             if x0 == x1 and y0 == y1:
@@ -398,7 +398,7 @@ class GoalFunction(Node):
 
 
     def send(self, goal):
-        self.nav_state = NavState.SENDING        # transizione atomica
+        self.nav_state = NavState.SENDING      
         self.current_goal = goal
         self.last_attempted_goal=goal
         self.last_goal_sent_time = self.get_clock().now().nanoseconds / 1e9
@@ -419,15 +419,15 @@ class GoalFunction(Node):
     def on_goal_response(self, future):
         handle = future.result()
         if not handle.accepted:
-            self.nav_state = NavState.IDLE       # transizione atomica
+            self.nav_state = NavState.IDLE       
             self.current_goal = None
             return
         self.own_goal_handle = handle
-        self.nav_state = NavState.NAVIGATING     # transizione atomica
+        self.nav_state = NavState.NAVIGATING     
         handle.get_result_async().add_done_callback(self._on_goal_result)
 
     def cancel_and_send(self, goal):
-        self.nav_state = NavState.CANCELLING     # transizione atomica
+        self.nav_state = NavState.CANCELLING     
         self.pending_goal = goal
         self.own_goal_handle.cancel_goal_async().add_done_callback(self.on_cancel_done)
 
@@ -436,16 +436,16 @@ class GoalFunction(Node):
         self.pending_goal = None
         self.own_goal_handle = None
         if goal_to_send:
-            self.send(goal_to_send)             # transizione: CANCELLING → SENDING
+            self.send(goal_to_send)             
         else:
             self.nav_state = NavState.IDLE
 
     def _on_goal_result(self, future):
-        if self.nav_state == NavState.CANCELLING:
+        if self.nav_state in [NavState.CANCELLING, NavState.RECOVERING, NavState.SENDING]:
             return  # il cancel gestirà lui la prossima transizione
         self.own_goal_handle = None
         self.current_goal = None
-        self.nav_state = NavState.IDLE           # transizione atomica
+        self.nav_state = NavState.IDLE           
 
     def select_and_send_goal(self):
 
@@ -465,9 +465,9 @@ class GoalFunction(Node):
             return
         
         if self.nav_state != NavState.IDLE and self.nav_state != NavState.NAVIGATING:
-            return  # SENDING,RECOVERING o CANCELLING: aspetta che la transizione finisca
+            return  # SENDING,RECOVERING or CANCELLING: wait until the state change
         
-        if self.is_stuck():
+        if self.nav_state==NavState.NAVIGATING and self.is_stuck():
             self.handle_stuck()
             return
 
