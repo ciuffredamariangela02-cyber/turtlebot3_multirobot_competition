@@ -54,6 +54,7 @@ def generate_launch_description():
     y_pose          = LaunchConfiguration('y_pose',          default='0.0')
     robot_name      = LaunchConfiguration('robot_name',      default=TURTLEBOT3_MODEL)
     robot_namespace = LaunchConfiguration('robot_namespace', default='')
+    yaw = LaunchConfiguration('yaw', default='0.0')
 
     declare_x_position_cmd = DeclareLaunchArgument(
         'x_pose', default_value='0.0',
@@ -70,6 +71,10 @@ def generate_launch_description():
     declare_robot_namespace_cmd = DeclareLaunchArgument(
         'robot_namespace', default_value='',
         description='ROS namespace of the robot')
+
+    declare_yaw_cmd = DeclareLaunchArgument(
+        'yaw', default_value='0.0',
+        description='Yaw angle of the robot in radians')
 
     def spawn_robot(context):
         ns   = context.launch_configurations['robot_namespace']
@@ -100,7 +105,8 @@ def generate_launch_description():
                 '-file', tmp_sdf.name,
                 '-x', x,
                 '-y', y,
-                '-z', '0.01'
+                '-z', '0.01',
+                '-Y', yaw
             ],
             output='screen',
         )
