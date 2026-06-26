@@ -5,7 +5,8 @@
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=custom
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=symmetric
 #   ros2 launch ugv_competition metric.launch.py map_name:=symmetric goal_seed:=42 goal_placement:=random
-# 
+#   ros2 launch ugv_competition metric.launch.py robot1_metric:=estimated_time_to_goal robot2_metric:=estimated_time_to_goal map_name:=symmetric goal_seed:=42 goal_placement:=random   
+#
 # Set goal seed to 42 for reproducibility with the reported simulations in the report
 # Available metrics: euclidean, manhattan, estimated_time
 # Available maps: custom, symmetric
