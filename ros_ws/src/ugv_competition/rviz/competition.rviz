@@ -12,6 +12,8 @@ Panels:
         - /RobotModel2
         - /Path1
         - /Path2
+        - /Path1
+        - /Path2
       Splitter Ratio: 0.5
     Tree Height: 555
   - Class: rviz_common/Selection
