@@ -9,7 +9,7 @@ bt_navigator:
     default_nav_through_poses_bt_xml: "/opt/ros/jazzy/share/nav2_bt_navigator/behavior_trees/navigate_to_pose_w_replanning_and_recovery.xml"
     
     bt_loop_duration: 10        # ms
-    server_timeout: 10000        # ms (5 seconds instead of default 2s)
+    server_timeout: 2000        # ms (5 seconds instead of default 2s)
     always_reload_bt_xml: true #false
 
     goal_blackboard_id: goal
@@ -40,7 +40,7 @@ controller_server:
     general_goal_checker:
       stateful: true
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.10 #0.25
+      xy_goal_tolerance: 0.20 #0.25
       yaw_goal_tolerance: 6.28 #0.25 is 2 pi
     FollowPath:
       plugin: "nav2_mppi_controller::MPPIController"
@@ -54,10 +54,10 @@ controller_server:
       vx_std: 0.2
       vy_std: 0.2
       wz_std: 0.4
-      vx_max: 0.3     # Was 0.5
+      vx_max: 0.5     # Was 0.5
       vx_min: -0.22     # Was -0.35
       vy_max: 0.0       # Was 0.5 (TurtleBots are differential drive, they cannot strafe in Y!)
-      wz_max: 0.8      # Was 1.9 (Burger can rotate quite fast)
+      wz_max: 2.0      # Was 1.9 (Burger can rotate quite fast)
       iteration_count: 1
       prune_distance: 1.7 #1.7
       transform_tolerance: 0.5
@@ -73,8 +73,8 @@ controller_server:
 local_costmap:
   local_costmap:
     ros__parameters:
-      update_frequency: 1.0
-      publish_frequency: 1.0
+      update_frequency: 20.0
+      publish_frequency: 20.0
       global_frame: robot1/odom
       robot_base_frame: robot1/base_link
       use_sim_time: true
@@ -100,7 +100,7 @@ local_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.0
+        cost_scaling_factor: 5.0
         inflation_radius: 0.20  # Was 0.55 - Allows them to get closer to walls and each other
       always_send_full_costmap: true
 
@@ -137,8 +137,8 @@ global_costmap:
         transform_tolerance: 0.5
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.0 #3.0 to make a gentler gradient
-        inflation_radius: 0.30 #0.55 
+        cost_scaling_factor: 5.0 #3.0 to make a gentler gradient
+        inflation_radius: 0.20 #0.55 
       always_send_full_costmap: true
 
 planner_server:
@@ -217,7 +217,7 @@ collision_monitor:
 
 velocity_smoother:
   ros__parameters:
-    smoothing_frequency: 1.0
+    smoothing_frequency: 20.0
     scale_velocities: false
     feedback: "OPEN_LOOP"
     max_velocity: [0.5, 0.0, 2.5]
@@ -277,14 +277,14 @@ amcl:
     save_pose_rate: 0.5
     sigma_hit: 0.2
     tf_broadcast: true
-    transform_tolerance: 2.0
+    transform_tolerance: 0.5
     update_min_a: 0.05
     update_min_d: 0.05
     z_hit: 0.5
     z_max: 0.05
     z_rand: 0.5
     z_short: 0.05
-    scan_topic: scan
+    scan_topic: /robot1/scan
 
 lifecycle_manager_localization:
   ros__parameters:
