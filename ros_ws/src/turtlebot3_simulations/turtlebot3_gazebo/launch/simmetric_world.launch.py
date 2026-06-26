@@ -46,6 +46,7 @@ def generate_launch_description():
         launch_arguments={
             'x_pose': x_pose_r1,
             'y_pose': y_pose_r1,
+            'yaw': '0.0',
             'robot_name': 'robot1',
             'robot_namespace': 'robot1'
         }.items()
@@ -60,6 +61,7 @@ def generate_launch_description():
             launch_arguments={
                 'x_pose': x_pose_r2,
                 'y_pose': y_pose_r2,
+                'yaw': '3.14159',
                 'robot_name': 'robot2',
                 'robot_namespace': 'robot2'
             }.items()

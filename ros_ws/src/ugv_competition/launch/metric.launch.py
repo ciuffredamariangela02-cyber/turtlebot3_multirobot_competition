@@ -1,7 +1,7 @@
 # metric.launch.py
 # Launch file for the competition with configurable metrics, map and goal placement.
 #
-# Usage:
+# Example:
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=custom
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=symmetric
 #   ros2 launch ugv_competition metric.launch.py map_name:=symmetric goal_seed:=42 goal_placement:=random
@@ -42,13 +42,17 @@ def launch_setup(context, *args, **kwargs):
     if map_name == 'symmetric':
         world_launch = os.path.join(pkg_tb3_gazebo, 'launch', 'simmetric_world.launch.py')
         map_file = os.path.join(pkg_ugv, 'maps', 'simmetric_map.yaml')
-        robot1_x, robot1_y = '0.0', '-0.3'
-        robot2_x, robot2_y = '0.0', '0.3'
-    else:  # default: custom
+        robot1_x, robot1_y, robot1_yaw = '0.0', '-0.3', '0.0'
+        robot2_x, robot2_y, robot2_yaw = '0.0', '0.3', '3.14159'
+        robot1_oz, robot1_ow = '0.0', '1.0'
+        robot2_oz, robot2_ow = '1.0', '0.0'
+    else:
         world_launch = os.path.join(pkg_tb3_gazebo, 'launch', 'custom_world.launch.py')
         map_file = os.path.join(pkg_ugv, 'maps', 'custom_map.yaml')
-        robot1_x, robot1_y = '2.5', '-1.5'
-        robot2_x, robot2_y = '2.5', '-2.5'
+        robot1_x, robot1_y, robot1_yaw = '2.5', '-1.5', '0.0'
+        robot2_x, robot2_y, robot2_yaw = '2.5', '-2.5', '0.0'
+        robot1_oz, robot1_ow = '0.0', '1.0'
+        robot2_oz, robot2_ow = '0.0', '1.0'
 
     # Gazebo (t=0s)
     gazebo = IncludeLaunchDescription(
@@ -118,7 +122,7 @@ def launch_setup(context, *args, **kwargs):
             ExecuteProcess(
                 cmd=['ros2', 'topic', 'pub', '--times', '15', '/robot1/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
-                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot1_x}, "y": {robot1_y}, "z": 0.0}}, "orientation": {{"w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
+                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot1_x}, "y": {robot1_y}, "z": 0.0}}, "orientation": {{"x": 0.0, "y": 0.0, "z": {robot1_oz}, "w": {robot1_ow}}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
                 output='screen'
             )
         ]
@@ -131,7 +135,7 @@ def launch_setup(context, *args, **kwargs):
             ExecuteProcess(
                 cmd=['ros2', 'topic', 'pub', '--times', '15', '/robot2/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
-                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot2_x}, "y": {robot2_y}, "z": 0.0}}, "orientation": {{"w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
+                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot2_x}, "y": {robot2_y}, "z": 0.0}}, "orientation": {{"x": 0.0, "y": 0.0, "z": {robot2_oz}, "w": {robot2_ow}}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
                 output='screen'
             )
         ]
