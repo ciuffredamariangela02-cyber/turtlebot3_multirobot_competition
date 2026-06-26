@@ -1,7 +1,7 @@
 # metric.launch.py
 # Launch file for the competition with configurable metrics, map and goal placement.
 #
-# Usage:
+# Example:
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=custom
 #   ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=symmetric
 #   ros2 launch ugv_competition metric.launch.py map_name:=symmetric goal_seed:=42 goal_placement:=random
@@ -117,7 +117,7 @@ def launch_setup(context, *args, **kwargs):
             ExecuteProcess(
                 cmd=['ros2', 'topic', 'pub', '--times', '15', '/robot1/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
-                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot1_x}, "y": {robot1_y}, "z": 0.0}}, "orientation": {{"w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
+                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot1_x}, "y": {robot1_y}, "z": 0.0}}, "orientation": {{"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
                 output='screen'
             )
         ]
@@ -130,7 +130,7 @@ def launch_setup(context, *args, **kwargs):
             ExecuteProcess(
                 cmd=['ros2', 'topic', 'pub', '--times', '15', '/robot2/initialpose',
                     'geometry_msgs/msg/PoseWithCovarianceStamped',
-                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot2_x}, "y": {robot2_y}, "z": 0.0}}, "orientation": {{"w": 1.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
+                    f'{{"header": {{"frame_id": "map"}}, "pose": {{"pose": {{"position": {{"x": {robot2_x}, "y": {robot2_y}, "z": 0.0}}, "orientation": {{"x": 0.0, "y": 0.0, "z": 1.0, "w": 0.0}}}}, "covariance": [0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.06853]}}}}'],
                 output='screen'
             )
         ]
@@ -242,3 +242,4 @@ def generate_launch_description():
         goal_seed_arg,
         OpaqueFunction(function=launch_setup),
     ])
+
