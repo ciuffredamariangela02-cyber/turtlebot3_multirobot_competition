@@ -15,6 +15,7 @@
 # - The position of the all robots: /robot/pose
 
 import rclpy
+import time
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, DurabilityPolicy, ReliabilityPolicy # Added ReliabilityPolicy
 from geometry_msgs.msg import PoseWithCovarianceStamped, PoseArray, Pose
@@ -65,6 +66,10 @@ class GameMaster(Node):
         self.score_pub = self.create_publisher(String, '/game/score', qos)
         self.marker_pub = self.create_publisher(MarkerArray, '/game/goal_markers', qos) 
         self.banner_pub = self.create_publisher(Marker, '/game/banner', qos)
+        
+        #to calculate time
+        self.game_start_time = self.get_clock().now()
+        self.game_end_time = None
 
         # Subscribers for robot positions
         self.create_subscription(
@@ -269,8 +274,10 @@ class GameMaster(Node):
  
     def check_winner(self):
         active_goals = [g for g in self.goals if g['active']]
+        
         if len(active_goals) == 0 and len(self.goals) > 0:
             self.game_over = True
+            self.game_end_time = self.get_clock().now()
             if self.score['robot1'] > self.score['robot2']:
                 self.winner = 'robot1'
             elif self.score['robot2'] > self.score['robot1']:
@@ -371,16 +378,27 @@ class GameMaster(Node):
            marker.color.g = 0.84
            marker.color.b = 0.0
            marker.color.a = 1.0
+        
+        elapsed_time = 0.0
+        if self.game_start_time and self.game_end_time:
+            duration = self.game_end_time - self.game_start_time
+            elapsed_time = duration.nanoseconds / 1e9  # Converti nanosecondi in secondi
+
+        time_str = f"Time: {elapsed_time:.1f}s"
 
         if winner == 'robot1':
-            marker.text = " ROBOT 1 WINS! \nFinal: R1={} R2={}".format(self.score['robot1'], self.score['robot2'])
+            marker.text = f" ROBOT 1 WINS!\nFinal: R1={self.score['robot1']} R2={self.score['robot2']}\n{time_str}"
         elif winner == 'robot2':
-            marker.text = " ROBOT 2 WINS! \nFinal: R1={} R2={}".format(self.score['robot1'], self.score['robot2'])
+            marker.text = f" ROBOT 2 WINS!\nFinal: R1={self.score['robot1']} R2={self.score['robot2']}\n{time_str}"
         else:
-            marker.text = " IT'S A DRAW!\nFinal: R1={} R2={}".format(self.score['robot1'], self.score['robot2'])
-
-       # Publish repeatedly so it stays visible
+            marker.text = f" IT'S A DRAW!\nFinal: R1={self.score['robot1']} R2={self.score['robot2']}\n{time_str}"
+        
+         # Publish repeatedly so it stays visible
         self.banner_pub.publish(marker)
+
+        
+      
+       
  
 def main(args=None):
     rclpy.init(args=args)
