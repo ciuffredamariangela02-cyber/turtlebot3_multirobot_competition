@@ -46,7 +46,7 @@ controller_server:
       plugin: "nav2_mppi_controller::MPPIController"
       time_steps: 100 #56 to think faster
       model_dt: 0.05 
-      batch_size: 1500 #200
+      batch_size: 1000 #200
       ax_max: 3.0
       ax_min: -3.0
       ay_max: 3.0
@@ -104,8 +104,8 @@ local_costmap:
           obstacle_min_range: 0.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
-        cost_scaling_factor: 2.0
-        inflation_radius: 0.2 # Was 0.55 - Allows them to get closer to walls and each other
+        cost_scaling_factor: 0.5
+        inflation_radius: 0.25 # Was 0.55 - Allows them to get closer to walls and each other
       always_send_full_costmap: true
 
 global_costmap:
