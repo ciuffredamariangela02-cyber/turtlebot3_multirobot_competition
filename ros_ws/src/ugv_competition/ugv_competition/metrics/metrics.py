@@ -6,21 +6,21 @@ import math
     
 
 # Constants for estimated time calculation
-VX_MAX = 0.22
-WZ_MAX = 0.8 
+VX_MAX = 0.2
+WZ_MAX = 1.0
 
 def manhattan_distance(pose,goal):
         '''Calculate Manhattan distance between a pose and a goal'''
-        dx = abs(pose.position.x - goal['x'])
-        dy = abs(pose.position.y - goal['y'])
+        dx = abs(goal['x'] - pose.position.x)
+        dy = abs(goal['y'] - pose.position.y)
         
         return dx + dy
 
 
 
 def estimated_time_to_goal(pose,goal):
-        dx = pose.position.x - goal['x']
-        dy = pose.position.y - goal['y']
+        dx = goal['x'] - pose.position.x
+        dy = goal['y'] - pose.position.y
         dist = math.hypot(dx, dy)
         
         orientation=pose.orientation
@@ -29,9 +29,6 @@ def estimated_time_to_goal(pose,goal):
         angle_to_goal=math.atan2(dy,dx)
         angle_diff=abs(math.atan2(math.sin(angle_to_goal-yaw),math.cos(angle_to_goal-yaw)))
 
-        VX_MAX=0.22
-        WZ_MAX=0.8
-        
         time_to_rotate = angle_diff/WZ_MAX
         time_to_translate = dist/VX_MAX
         estimated_seconds = time_to_rotate + time_to_translate
@@ -52,8 +49,8 @@ def cluster_score( goal, all_goal, radius=2.0):
 
 def euclidean_distance( pose, goal):
         """Calculate Euclidean distance between a pose and a goal."""
-        dx = pose.position.x - goal['x']
-        dy = pose.position.y - goal['y']
+        dx = goal['x'] - pose.position.x
+        dy = goal['y'] - pose.position.y
         return math.hypot(dx, dy)
     
 

@@ -31,9 +31,9 @@ class NavState(Enum):
     RECOVERING    = auto()  # recover from a blocking state
 
 # Strategy parameters
-ALPHA = 3.0   # weight for own distance (higher = prefer closer goals)
-BETA = 5.0    # weight for competitive advantage (higher = prefer avoid goal where opponent is nearer than him)
-GAMMA = 1.0 
+ALPHA = 6.0   # weight for own distance (higher = prefer closer goals)
+BETA = 4.0    # weight for competitive advantage (higher = prefer avoid goal where opponent is nearer than him)
+GAMMA = 2.0 
 GOAL_REACHED_THRESHOLD = 0.30  # meters
 MAX_GOAL_DISTANCE = 3.0  # max distance to consider a goal reachable
 MAX_DISTANCE_ARENA = 10.0  # max distance in the arena for goal selection
@@ -336,8 +336,9 @@ class GoalFunction(Node):
         while not reachable_goals and new_radius <= MAX_DISTANCE_ARENA:
             #check goals with current distance
             for g in self.goals:
-                dist = self.get_metric_cost(self.own_pose, g)
-                if dist <= new_radius:
+                # distance of a goal is always evaluated by euclidean distance while the score of a goal is based on metrics
+                physical_dist = metric_module.euclidean_distance(self.own_pose, g)
+                if physical_dist <= new_radius:
                     reachable_goals.append(g)
             
             # If no goals are within radius, expand by 1 meter
