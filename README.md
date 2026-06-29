@@ -164,8 +164,8 @@ ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_met
 
 Recordings of the simulation runs are available at the links below.
 
-| Scenario | Metrics | Link |
-|---|---|---|
-| Symmetric map – Euclidean vs Estimated Time | `euclidean` vs `estimated_time` | [Watch](url) |
-| Custom map – Euclidean vs Manhattan | `euclidean` vs `manhattan` | [Watch](url) |
-| Custom map – Manhattan vs Estimated Time | `manhattan` vs `estimated_time` | [Watch](url) |
+| Scenario| Link |
+|---|---|
+| Symmetric map – Euclidean vs Estimated Time | [Watch](url) |
+| Custom map – Euclidean vs Manhattan | [Watch](url) |
+| Custom map – Manhattan vs Estimated Time | [Watch](url) |
