@@ -133,6 +133,7 @@ See also [Launching the competition environment](#launching-the-competition-envi
 
 ---
 
+<a id="launching-the-competition-environment"></a>
 ## Launching the Competition Environment (`metric.launch.py`)
 
 This launch file acts as the primary entry point for the UGV competition simulation. It is highly configurable, allowing you to easily adjust the pathfinding metrics for each robot, switch between maps, and dictate how goals are generated.
