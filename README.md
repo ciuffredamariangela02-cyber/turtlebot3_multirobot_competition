@@ -8,7 +8,7 @@ Simulating Competitive Setpoints Navigation for Twin TurtleBots in Environment w
 ```
 .
 ├── docker_ws/             # Docker workspace for building the container
-├── ros_ws/                # Main ROS 2 workspace containing all packages
+├── ros_ws/src             # Main ROS 2 workspace containing all packages
 ├── chown_me.sh            # Script to change ownership of files created as root user
 ├── runmac.sh              # Script to run the Docker container (for mac users)
 ├── execmac.sh             # Script to open a running container (for mac users)
