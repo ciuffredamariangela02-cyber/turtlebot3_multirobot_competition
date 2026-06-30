@@ -1,7 +1,7 @@
 
 # multirobot_competitive_simulation
 
-The report details a multi-robot competitive simulation system developed using ROS 2 Jazzy, Nav2 and a custom pkg. It features two autonomous TurtleBot3 Burger robots competing to collect randomly generated goals within a shared Gazebo Harmonic arena.
+This repository provides multi-robot competitive simulation system developed using ROS 2 Jazzy, Nav2 and a custom pkg. It features two autonomous TurtleBot3 Burger robots competing to collect randomly generated goals within a shared Gazebo Harmonic arena.
 
 ## Project Structure
 
