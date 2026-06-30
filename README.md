@@ -162,5 +162,5 @@ ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_met
 
 ## Video Demos
 
-Recordings of the simulation runs are available at this [link]([https://politecnicobari-my.sharepoint.com/:f:/g/personal/m_ciuffreda11_studenti_poliba_it/IgA-S5f_5jY1TLzZ4mDJvd9IAVAUpPiPFQ6e8dWbIpsA9Kc?e=puHsm6]).
+Recordings of the simulation runs are available at this [link](https://politecnicobari-my.sharepoint.com/:f:/g/personal/m_ciuffreda11_studenti_poliba_it/IgA-S5f_5jY1TLzZ4mDJvd9IAVAUpPiPFQ6e8dWbIpsA9Kc?e=puHsm6).
 Videos comprehend simulations in custom map and symmetric map with goal_seed = 100, robot 1 and robot 2 metrics are set respectively to euclidean and estimated time, NUM_GOAL is set to 15.
