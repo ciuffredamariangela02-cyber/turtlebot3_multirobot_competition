@@ -1,7 +1,7 @@
 
 # multirobot_competitive_simulation
 
-Simulating Competitive Setpoints Navigation for Twin TurtleBots in Environment with obstacles
+The report details a multi-robot competitive simulation system developed using ROS 2 Jazzy, Nav2 and a custom pkg. It features two autonomous TurtleBot3 Burger robots competing to collect randomly generated goals within a shared Gazebo Harmonic arena.
 
 ## Project Structure
 
@@ -9,6 +9,8 @@ Simulating Competitive Setpoints Navigation for Twin TurtleBots in Environment w
 .
 ├── docker_ws/             # Docker workspace for building the container
 ├── ros_ws/src             # Main ROS 2 workspace containing all packages
+   ├── turtlebot3_simulations
+   ├── ugv_competition
 ├── chown_me.sh            # Script to change ownership of files created as root user
 ├── runmac.sh              # Script to run the Docker container (for mac users)
 ├── execmac.sh             # Script to open a running container (for mac users)
@@ -159,6 +161,8 @@ You can customize the simulation behavior by passing the following arguments to 
 ```bash
 ros2 launch ugv_competition metric.launch.py robot1_metric:=euclidean robot2_metric:=manhattan map_name:=custom
 ```
+### Number of goals
+You can adjust the maximum number of goals by changing the NUM_GOALS constant in ugv_competition/game_master.py. Please note that this defines the upper limit of goals that can spawn; the actual number spawned during a game may be less.
 
 ## Video Demos
 
